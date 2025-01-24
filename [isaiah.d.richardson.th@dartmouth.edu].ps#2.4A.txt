@@ -1,0 +1,420 @@
+# ENGS 107 Problem Set 2: Monte Carlo/Convergence/Seeds/Scripts/Plotting
+# Professor Dr. Klaus Keller
+# Due Date: Friday, January 24, 2025 at 11:59 pm
+# File name: [isaiah.d.richardson.th@dartmouth.edu].ps#2.R
+# Software: R and RStudio
+#_______________________________________________________________________________
+# Author: Isaiah D. Richardson, M.S. (IDR)
+# Copyright: copyright by the author
+# License: this code is distributed under the GNU GENERAL PUBLIC LICENSE v3.0
+# License: for more information regarding GNU GENERAL PUBLIC LICENSE Version 3 visit: https://www.gnu.org/licenses/why-not-lgpl.html
+# There is no warranty on this R code script for ENGS 107 Question 4A
+#_______________________________________________________________________________
+# Version 1: last changes made on: January 23, 2025
+#_______________________________________________________________________________
+# Sources:
+# - coin-example.R for general formatting and layout of the header notes
+# - R help files accessed through R-studio for syntax
+# - Grolemund, G. Hands-On Programming with R. For understanding the RStudio interface and for understanding basic functions
+# - Cotton, R. Learning R: A Step-by-Step Function Guide to Data Analysis. For understanding how seeds work, the rnorm, nrow, ncol, apply, and sapply functions, how to set up a matrix function, and plotting 
+# - Venables, W.N., Smith, D.M. & the R Core Team. (2024). An Introduction to R Notes on R: A Programming Environment for Data Analysis and Graphics Version 4.4.2 for functions and plotting
+# - Verzani, J. (2002). simpleR - Using R for Introductory Statistics. Used for understanding notation, functions, and formatting
+# - Culhane, A. (2012). Introduction to Programming in R. For understanding functions, including the matrix function, and for plotting
+# - Grabner-Radkowitsch, C. (2022). Monte Carlo Simulations in R. For understanding the basics of how to perform a Monte Carlo simulation in R
+# - Grabner-Radkowitsch, C. (2022). Fundamental object types in R III: Factors and Data Frames. For understanding how to set up a matrix function
+# - Bulut, O. (2020). Conducting Monte Carlo Simulations in R. For understanding how to perform a Monte Carlo Simulation in R
+# - Dong, H. & Nakayama, M.K. (2020). A Tutorial on Quantile Estimation via Monte Carlo. For understanding what a quantile is in R
+# - Applegate, P.J., Keller, K. et al.(2016). Risk Analysis in the Earth Sciences: A Lab Manual with Exercises in R. For downloading R and RStudio and understanding the RStudio interface and basic functions
+# - Robert, C.P. & Casella, G. (2004). Monte Carlo Statistical Methods (2nd edition). For deepening my conceptual understanding of convergence criteria
+# - Rizzo, M.L. (2019). Statistical Computing with R (2nd edition). To understand basic syntax, functions, background on performing a Monte Carlo simulation in R
+# - Wickman, H. (2015). Advanced R. To understand how to generate an initial random population and setting up data frames
+# - Hothorn, T. & Everitt, B.S. (2014). A Handbook of Statistical Analyses Using R (3rd edition). For understanding random number generation in R
+# - R Core Team. (2024). R: A Language and Environment for Statistical Computing. For understanding the rnorm(), quantile(), sample(), and sd() functions
+# - Murrell, P. (2005). R Graphics (2nd edition). For understanding the grid package graphics and text capabilities in R for the printing of results onto a PDF file
+# - Rosenberg, M. (2021) Analytics-Using-R. To understand how to set a seed and to understand how to create a for loop in R.
+# - Rubinstein, R.Y. & Kroese, D.P. (2016). Simulation and the Monte Carlo Method (2nd ed). For understanding proper convergence criteria when performing a Monte Carlo simulation
+# - “Estimating Pi using the Monte Carlo Method.” Academo. Retrieved from https://academo.org/demos/estimating-pi-monte-carlo/. Accessed 20 January 2025. For understanding the formulas and conceptual basis for how
+# - to calculate pi using a Monte Carlo method using a unit square and unit circle.
+# - Ross, S.M. (2006). Simulation (4th ed). Academic Press. Provided a conceptual basis for understanding convergence criteria for a Monte Carlo simulation
+# - Chang, W. (2013). R Graphics Cookbook: Practical Recipes for Visualizing Data. O’Reilly Media. For understanding the syntax, functions, formatting, and basics for producing plots and visualizing data in R.
+# - Gillespie, C. & Lovelace, R. (2016). Efficient R Programming: A Practical Guide to Smarter Programming. O’Reilly Media. For better understanding the RStudio interface, package selection, and optimizing code
+# - structure and performance.
+# - Matloff, N. (2011). The Art of R Programming. No Starch Press. For understanding how to set up and structure for loops and while loops in R
+# - Peng, R.D. (2015). R Programming for Data Science. Leanpub.For understanding how to set up, structure, and write for and while loops in R
+# - Personal correspondence with Dr. Keller during office hours in-person to conceptually discuss the graphing of the results taking uncertainty and seeds into account (01/17/2025; 01/21/2025)
+# - Personal correspondence with TA Siddhi Gothivrekar during office hours over Zoom and in-person to discuss code structure, submitting to Github, ascii file generation, and graphical figure results (01/18/2025;
+# - 01/21/2025; 01/23/2025)
+#_______________________________________________________________________________
+# Collaborators:
+# Emma Vejcik - conceptual discussions outside of lecture hours regarding assessing uncertainty (choice of seeds and small sample size)
+#_______________________________________________________________________________
+# To run this script file:
+# 1. Open the ascii file in R
+# 2. Use the cursor to highlight the entire script file
+# 3. Press either 'Source' or 'Ctrl + Enter' to run the entire script
+# 4. Open the resulting PDF file to analyze the results
+#_______________________________________________________________________________
+# Description of the Problem Statement:
+# Use a Monte Carlo simulation method to:
+# A) determine the mean and the 95 percentile from a known univariate normal
+#    distribution with a mean of zero and a standard deviation of one with
+#    your estimated uncertainties.
+#_______________________________________________________________________________
+# The code script for Problem Set 2 Question 4A is detailed below:
+#_______________________________________________________________________________
+
+# Importing a grid package library to enable enhanced functions for subsequent text based plotting in R
+library(grid)
+
+# Setting the parameters specified in the problem statement for the normal distribution
+mean <- 0  # setting the mean of the normal distribution as 0
+standard_deviation <- 1  # setting the standard deviation of the normal distribution as 1
+
+# Setting five different seed values for reproducibility and controlled randomness (variability) in the Monte Carlo simulations
+# Note: Different results are obtained for each seed, re-running the simulation with the same seed produces the same results
+seed_values <- c(3, 5, 7, 10, 14)
+
+# Specifying the convergence criteria, specifically the tolerance for the standard deviation of the mean and 95th percentile estimates
+# Note: The Monte Carlo simulation iterations stop if the last 100 estimates fluctuate within the bounds of the specified threshold
+convergence_tolerance <- 0.005  
+
+# Defining the maximum number of iterations for the Monte Carlo simulation (an upper limit or bound that cannot be exceeded)
+# Note: This helps to reduce long computation times and prevent infinite loops during the simulation 
+maximum_iterations <- 10000
+
+# Creating and initializing lists to store the key results for each seed value
+results <- list()
+
+# Initializing a data frame to store the key results for each seed value
+summary_stats <- data.frame(
+  Seed = integer(),
+  Average_Estimated_Mean = numeric(),
+  Final_Std_Dev_Mean = numeric(),
+  Average_Estimated_95th = numeric(),
+  Final_Std_Dev_95th = numeric()
+)
+#_______________________________________________________________________________
+
+# Using a for loop to iterate over different seed values to generate Monte Carlo samples
+for (seed in seed_values) {
+  
+  # Setting the seed for reproducibility
+  set.seed(seed) 
+  
+  # Generating an initial random population from the normal distribution
+  random_population <- rnorm(1000, mean = mean, sd = standard_deviation)
+  
+  # Using the numeric function to initialize vectors to store the estimates over the Monte Carlo simulation iterations
+  means <- numeric(maximum_iterations)
+  percentiles_95 <- numeric(maximum_iterations)
+  std_dev_means <- numeric(maximum_iterations)
+  std_dev_percentiles_95 <- numeric(maximum_iterations)
+  
+  # Specifying control variables as convergence stopping criteria
+  # A Boolean flag to monitor convergence
+  converged <- FALSE
+  
+  # Starting an iteration counter
+  iteration <- 1 # 
+#_______________________________________________________________________________  
+  # Running the Monte Carlo simulation for a specific seed until the maximum number of iterations (upper bound = 10,000 iterations) or convergence criteria are met
+  while (iteration <= maximum_iterations && !converged) {
+    
+    # Performing sampling with replacement from the generated random population
+    # Note: replace = TRUE specifies to sample with replacement
+    random_samples <- sample(random_population, iteration, replace = TRUE)
+    
+    # Calculating the estimated mean for the sampled data using the mean function
+    means[iteration] <- mean(random_samples)
+    # Calculating the estimated 95th percentile for the sampled data using the quantile function
+    percentiles_95[iteration] <- quantile(random_samples, 0.95)
+    
+    # Calculating a rolling standard deviation for the means and 95th percentiles over the iterations for each seed
+    if (iteration > 1) {
+      
+      # Calculating a rolling standard deviation for the estimated mean
+      std_dev_means[iteration] <- sd(means[1:iteration])
+      # Calculating a rolling standard deviation for the estimated 95th percentile
+      std_dev_percentiles_95[iteration] <- sd(percentiles_95[1:iteration])
+    }
+    
+    # Checking if the convergence criteria are met after 1,000 iterations of the Monte Carlo simulation
+    # Note: If the last 100 estimates fluctuate within the bounds of the threshold, the simulation stops
+    if (iteration > 1000) {
+      if (std_dev_means[iteration] < convergence_tolerance && std_dev_percentiles_95[iteration] < convergence_tolerance) {
+        converged <- TRUE
+      }
+    }
+    
+    # Counting the number of iterations
+    iteration <- iteration + 1
+  }
+#_______________________________________________________________________________  
+  # Storing the key results for each seed in a structured list
+  results[[as.character(seed)]] <- list(
+    
+    # A truncated vector of estimated mean values
+    means = means[1:(iteration - 1)],
+    
+    # A truncated vector of estimated 95th percentile values
+    percentiles_95 = percentiles_95[1:(iteration - 1)],
+    
+    # The rolling standard deviation for the estimated means
+    std_dev_means = std_dev_means[1:(iteration - 1)],
+    
+    # The rolling standard deviation for the estimated 95th percentiles
+    std_dev_percentiles_95 = std_dev_percentiles_95[1:(iteration - 1)]
+  )
+#_______________________________________________________________________________
+#### Calculating the summary statistics for the simulation ####
+  
+  # Calculating the average estimated mean
+  avg_estimated_mean <- mean(means[1:(iteration - 1)])
+  # Calculating the final standard deviation of the estimated means
+  final_std_dev_mean <- std_dev_means[iteration - 1]
+  
+  # Calculating the average estimated 95th percentile value
+  avg_95th_percentile <- mean(percentiles_95[1:(iteration - 1)])
+  # Calculating the final standard deviation of the estimated 95th percentiles
+  final_std_dev_95th_percentile <- std_dev_percentiles_95[iteration - 1]
+#_______________________________________________________________________________
+  
+  # Appending the key results to the data frame
+  summary_stats <- rbind(summary_stats, data.frame(
+    Seed = seed,
+    
+    # The average estimated mean
+    Average_Estimated_Mean = avg_estimated_mean,
+    
+    # The final standard deviation of the estimated means
+    Final_Std_Dev_Mean = final_std_dev_mean,
+    
+    # The average estimated 95th percentile
+    Average_Estimated_95th_Percentile = avg_95th_percentile,
+    
+    # The final standard deviation of estimated 95th percentiles
+    Final_Std_Dev_95th = final_std_dev_95th_percentile
+  ))
+}
+#_______________________________________________________________________________
+# Creating a PDF file to save the Monte Carlo simulation results for all of the seeds
+pdf(file = "Monte_Carlo_Simulation_Results_4A.pdf", width = 8, height = 6)
+
+# Defining the colors for each seed value (i.e., 3, 5, 7, 10, 14) for plotting
+colors <- c("blue", "red", "gray", "orange", "purple")
+legend_labels <- c()
+#_______________________________________________________________________________
+#### PLOT 1 ####
+
+# Plotting a histogram of the generated random population
+# Note: probability = TRUE converts the histogram plot into a probability density plot; breaks = 50 divides the histogram into 50 bins
+hist(random_population, probability = TRUE, breaks = 50, col = "lightgray", border = "black",
+     
+     # Specifying the title for the histogram plot
+     main = "Plot 1: Histogram Plot of the Generated Random Population", 
+     
+     # Specifying the x-axis label for the histogram plot
+     xlab = "Data Value", 
+     
+     # Specifying the y-axis label for the histogram plot
+     ylab = "Probability Density")
+
+# Adding a legend to the upper left corner of the histogram plot
+# Note: lwd specifies the line width; lty = c(1, 2) specifies the lines as 1 (solid) and 2 (dashed); inset offsets the legend from the plot border
+legend("topleft", legend = c("Normal Curve", "95th Percentile"), col = c("red", "blue"), lwd = 2, lty = c(1, 2), inset = 0.02)
+
+# Overlaying the histogram plot with the theoretical normal distribution
+# Note: dnorm computes the probability density function of the normal distribution
+# Note: add = TRUE overlays the normal density curve onto the histogram plot
+curve(dnorm(x, mean = mean, sd = standard_deviation), col = "red", lwd = 2, add = TRUE)
+
+# Marking the 95th percentile on the histogram plot
+# Note: the quantile function calculates the 95th percentile of the random_population; the abline function adds a dashed vertical line
+# Note: lwd specifies the line width; lty = 2 specifies the line as dashed
+percentile_95_value <- quantile(random_population, 0.95)
+abline(v = percentile_95_value, col = "blue", lwd = 2, lty = 2)
+#_______________________________________________________________________________
+#### PLOT 2 ####
+
+# Plot of the Estimated Mean for Each Seed (y-axis) over the Number of Iterations (x-axis)
+plot(NULL, xlim = c(1, maximum_iterations), ylim = c(-0.5, 0.5),
+     
+     # Specifying the label for the x-axis
+     xlab = "Number of Iterations",
+     
+     # Specifying the label for the y-axis
+     ylab = "Estimated Means",
+     
+     # Specifying the label for the plot title
+     main = "Plot 2: Estimated Means over Number of Iterations")
+
+# Using a for loop to loop through each seed value and plot the estimated means
+for (i in 1:length(seed_values)) {
+  
+  # Converting the seed value to a character string to index the list of results
+  seed <- as.character(seed_values[i])
+  
+  # Plotting the estimated mean values over the number of iterations for a specific seed
+  lines(1:length(results[[seed]]$means), results[[seed]]$means, col = colors[i], lwd = 0.05)
+}
+# Creating a legend to label the results for the five different seeds examined
+legend_labels <- paste("Seed", seed_values)
+
+# Formatting the legend; lwd specifies line width, inset offsets the legend from the plot border
+legend("topright", legend = legend_labels, col = colors, lwd = 1, inset = 0.02)
+#_______________________________________________________________________________
+#### PLOT 3 ####
+
+# Plot of the Estimated 95th Percentiles for Each Seed (y-axis) over the Number of Iterations (x-axis)
+plot(NULL, xlim = c(1, maximum_iterations), ylim = c(1, 2), 
+     
+     # Specifying the x-axis label
+     xlab = "Number of Iterations",
+     
+     # Specifying the y-axis label
+     ylab = "Estimated 95th Percentiles",
+     
+     # Specifying the label for the plot title
+     main = "Plot 3: Estimated 95th Percentiles over Number of Iterations")
+
+# Using a for loop to loop through each seed value and plot the estimated 95th percentiles
+for (i in 1:length(seed_values)) {
+  
+  # Converting the seed value to a character string to index the list of results
+  seed <- as.character(seed_values[i])
+  
+  # Plotting the estimated 95th percentile values over the number of iterations for a specific seed
+  lines(1:length(results[[seed]]$percentiles_95), results[[seed]]$percentiles_95, col = colors[i], lwd = 0.05)
+}
+# Creating a legend to label the results for the five different seeds examined
+legend_labels <- paste("Seed", seed_values)
+
+# Formatting the legend for plot 2; lwd specifies line width, inset offsets the legend from the plot border
+legend("bottomright", legend = legend_labels, col = colors, lwd = 1, inset = 0.02)
+#_______________________________________________________________________________
+#### PLOT 4 ####
+
+# Plot of the Standard Deviation of the Estimated Means for Each Seed (y-axis) over the Number of Iterations (x-axis)
+# Note: Starting from iteration 2 (not plotting iteration 1 because it makes no sense to plot the standard deviation of a single value)
+plot(NULL, xlim = c(2, maximum_iterations), ylim = c(0, 0.5), 
+     
+     # Specifying the x-axis label
+     xlab = "Number of Iterations",
+     
+     # Specifying the y-axis label
+     ylab = "Standard Deviation of the Estimated Mean", 
+     
+     # Specifying the label for the plot title
+     main = "Plot 4: Standard Deviation of Estimated Means Over Number of Iterations")
+
+# Using a for loop to loop through each seed value and plot the standard deviations of the estimated means
+for (i in 1:length(seed_values)) {
+  
+  # Converting the seed value to a character string to index the list of results
+  seed <- as.character(seed_values[i])
+  
+  # Extracting the standard deviations of the estimated means for a given seed
+  std_dev_means <- results[[seed]]$std_dev_means
+  
+  # Ensuring that there is more than one value to plot
+  if (length(std_dev_means) > 1) {  
+    
+    # Plotting the standard deviation of the estimated means for a specific seed
+    lines(2:length(std_dev_means), std_dev_means[-1], col = colors[i], lwd = 1)
+  }
+}
+# Creating a legend to label the results for the five different seeds examined
+legend_labels <- paste("Seed", seed_values)
+
+# Formatting the legend; lwd specifies line width; inset offsets the legend from the plot border
+legend("topright", legend = legend_labels, col = colors, lwd = 1, inset = 0.02)
+#_______________________________________________________________________________
+#### PLOT 5 ####
+
+# Plot of the Standard Deviation of the Estimated 95th Percentiles (y-axis) over the Number of Iterations (x-axis)
+# Note: Starting from iteration 2 (not plotting iteration 1 because it does not make any sense to plot the standard deviation of a single value)
+plot(NULL, xlim = c(2, maximum_iterations), ylim = c(0, 0.5),
+     
+     # Specifying the x-axis label
+     xlab = "Number of Iterations",
+     
+     # Specifying the y-axis label
+     ylab = "Standard Deviation of Estimated 95th Percentiles", 
+     
+     # Specifying the label for the plot title
+     main = "Plot 5: Standard Deviation of Estimated 95th Percentiles Over Iterations")
+
+# Using a for loop to loop through each seed value and plot the standard deviations of the estimated 95th percentiles
+for (i in 1:length(seed_values)) {
+  
+  # Converting the seed value to a character string to index the list of results
+  seed <- as.character(seed_values[i])
+  
+  # Extracting the standard deviations of the estimated 95th percentiles for a given seed
+  std_dev_percentiles_95 <- results[[seed]]$std_dev_percentiles_95
+  
+  # Ensuring that there is more than one value to plot
+  if (length(std_dev_percentiles_95) > 1) {  
+    
+    # Plotting the standard deviation of the estimated 95th percentiles for a specific seed
+    lines(2:length(std_dev_percentiles_95), std_dev_percentiles_95[-1], col = colors[i], lwd = 1)
+  }
+}
+# Creating a legend to label the results for the five different seeds examined
+legend_labels <- paste("Seed", seed_values)
+
+# Formatting the legend; lwd specifies line width; inset offsets the legend from the plot border
+legend("topright", legend = legend_labels, col = colors, lwd = 1, inset = 0.02)
+#_______________________________________________________________________________
+#### ADDING THE KEY RESULTS TO THE END OF THE PDF FILE ####
+
+# Specifying the number of seeds to display per PDF page (so the data does not run off of the page)
+number_per_page <- 2  
+
+# Calculating the total number of pages needed to print the results for the five different seeds
+number_pages <- ceiling(nrow(summary_stats) / number_per_page)
+
+# Using a for loop to loop through each PDF page to add the key results for each seed value
+for (page in 1:number_pages) {
+  
+  # Creating a new blank plot for each PDF page
+  plot.new()
+  
+  # Formatting and labeling the title on the top of each PDF page
+  # Note: cex allows for adjustment of the character and letter sizes
+  text(0.5, 0.9, paste("Monte Carlo Simulation Results"), cex = 1.5, font = 2)
+  
+  # Determining the row indices for the PDF page
+  # Starting the row index for the PDF page
+  start_row <- (page - 1) * number_per_page + 1
+  
+  # Ending the row index for each PDF page to ensure that the results to not run off of the PDF page
+  end_row <- min(page * number_per_page, nrow(summary_stats))
+  
+  # Initializing the vertical position for placement of the results text
+  y_pos <- 0.8
+  
+  # Using a for loop to loop through the results summary for each seed and to display the results on the PDF page
+  # Note: All printed results are rounded to four (4) decimal places
+  for (i in start_row:end_row) {
+    text(0.1, y_pos, paste("Seed:", summary_stats$Seed[i]), pos = 4, font = 2)
+    
+    # Posting the Average Estimated Mean
+    text(0.1, y_pos - 0.05, paste("Average Estimated Mean:", round(summary_stats$Average_Estimated_Mean[i], 4)), pos = 4)
+    
+    # Posting the Final Standard Deviation of the Estimated Mean
+    text(0.1, y_pos - 0.10, paste("Final Standard Deviation of the Estimated Mean:", round(summary_stats$Final_Std_Dev_Mean[i], 4)), pos = 4)
+    
+    # Posting the Averaged Estimated 95th Percentile
+    text(0.1, y_pos - 0.15, paste("Average Estimated 95th Percentile:", round(summary_stats$Average_Estimated_95th[i], 4)), pos = 4)
+    
+    # Posting the Final Standard Deviation of the Estimated 95th Percentile
+    text(0.1, y_pos - 0.20, paste("Final Standard Deviation of the Estimated 95th Percentile:", round(summary_stats$Final_Std_Dev_95th[i], 4)), pos = 4)
+    
+    # Adjusting the vertical position for the set of results
+    y_pos <- y_pos - 0.5  
+  }
+}
+#_______________________________________________________________________________
+# Closing the PDF file
+dev.off()

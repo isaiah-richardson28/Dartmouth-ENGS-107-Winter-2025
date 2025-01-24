@@ -1,0 +1,272 @@
+# ENGS 107 Problem Set 2: Monte Carlo/Convergence/Seeds/Scripts/Plotting
+# Professor Dr. Klaus Keller
+# Due Date: Friday, January 24, 2025 at 11:59 pm
+# File name: [isaiah.d.richardson.th@dartmouth.edu].ps#2.R
+# Software: R and RStudio
+#_______________________________________________________________________________
+# Author: Isaiah D. Richardson, M.S. (IDR)
+# Copyright: copyright by the author
+# License: this code is distributed under the GNU GENERAL PUBLIC LICENSE v3.0
+# License: for more information regarding GNU GENERAL PUBLIC LICENSE Version 3 visit: https://www.gnu.org/licenses/why-not-lgpl.html
+# There is no warranty on this R code script for ENGS 107 Question 4B
+#_______________________________________________________________________________
+# Version 1: last changes made on: January 23, 2025
+#_______________________________________________________________________________
+# Sources (Relevant to both Question 4A and 4B):
+# - coin-example.R for general formatting and layout of the header notes
+# - R help files accessed through R-studio for syntax
+# - Grolemund, G. Hands-On Programming with R. For understanding the RStudio interface and for understanding basic functions
+# - Cotton, R. Learning R: A Step-by-Step Function Guide to Data Analysis. For understanding how seeds work, the rnorm, nrow, ncol, apply, and sapply functions, how to set up a matrix function, and plotting 
+# - Venables, W.N., Smith, D.M. & the R Core Team. (2024). An Introduction to R Notes on R: A Programming Environment for Data Analysis and Graphics Version 4.4.2 for functions and plotting
+# - Verzani, J. (2002). simpleR - Using R for Introductory Statistics. Used for understanding notation, functions, and formatting
+# - Culhane, A. (2012). Introduction to Programming in R. For understanding functions, including the matrix function, and for plotting
+# - Grabner-Radkowitsch, C. (2022). Monte Carlo Simulations in R. For understanding the basics of how to perform a Monte Carlo simulation in R
+# - Grabner-Radkowitsch, C. (2022). Fundamental object types in R III: Factors and Data Frames. For understanding how to set up a matrix function
+# - Bulut, O. (2020). Conducting Monte Carlo Simulations in R. For understanding how to perform a Monte Carlo Simulation in R
+# - Dong, H. & Nakayama, M.K. (2020). A Tutorial on Quantile Estimation via Monte Carlo. For understanding what a quantile is in R
+# - Applegate, P.J., Keller, K. et al.(2016). Risk Analysis in the Earth Sciences: A Lab Manual with Exercises in R. For downloading R and RStudio and understanding the RStudio interface and basic functions
+# - Robert, C.P. & Casella, G. (2004). Monte Carlo Statistical Methods (2nd edition). For deepening my conceptual understanding of convergence criteria
+# - Rizzo, M.L. (2019). Statistical Computing with R (2nd edition). To understand basic syntax, functions, background on performing a Monte Carlo simulation in R
+# - Wickman, H. (2015). Advanced R. To understand how to generate an initial random population and setting up data frames
+# - Hothorn, T. & Everitt, B.S. (2014). A Handbook of Statistical Analyses Using R (3rd edition). For understanding random number generation in R
+# - R Core Team. (2024). R: A Language and Environment for Statistical Computing. For understanding the rnorm(), quantile(), sample(), and sd() functions
+# - Murrell, P. (2005). R Graphics (2nd edition). For understanding the grid package graphics and text capabilities in R for the printing of results onto a PDF file
+# - Rosenberg, M. (2021) Analytics-Using-R. To understand how to set a seed and to understand how to create a for loop in R.
+# - Rubinstein, R.Y. & Kroese, D.P. (2016). Simulation and the Monte Carlo Method (2nd ed). For understanding proper convergence criteria when performing a Monte Carlo simulation
+# - “Estimating Pi using the Monte Carlo Method.” Academo. Retrieved from https://academo.org/demos/estimating-pi-monte-carlo/. Accessed 20 January 2025. For understanding the formulas and conceptual basis for how to calculate pi using a Monte Carlo method using a unit square and unit circle.
+# - Ross, S.M. (2006). Simulation (4th ed). Academic Press. Provided a conceptual basis for understanding convergence criteria for a Monte Carlo simulation
+# - Chang, W. (2013). R Graphics Cookbook: Practical Recipes for Visualizing Data. O’Reilly Media. For understanding the syntax, functions, formatting, and basics for producing plots and visualizing data in R.
+# - Gillespie, C. & Lovelace, R. (2016). Efficient R Programming: A Practical Guide to Smarter Programming. O’Reilly Media. For better understanding the RStudio interface, package selection, and optimizing code structure and performance.
+# - Matloff, N. (2011). The Art of R Programming. No Starch Press. For understanding how to set up and structure for loops and while loops in R
+# - Peng, R.D. (2015). R Programming for Data Science. Leanpub.For understanding how to set up, structure, and write for and while loops in R
+# - Personal correspondence with Dr. Keller during office hours in-person to conceptually discuss the graphing of the results taking uncertainty and seeds into account (01/17/2025; 01/21/2025)
+# - Personal correspondence with TA Siddhi Gothivrekar during office hours over Zoom and in-person to discuss code structure, submitting to Github, ascii file generation, and graphical figure results (01/18/2025; 01/21/2025; 01/23/2025)
+#_______________________________________________________________________________
+# Collaborators:
+# Emma Vejcik - conceptual discussions outside of lecture hours regarding assessing uncertainty (choice of seeds and small sample size)
+#_______________________________________________________________________________
+# To run this script file:
+# 1. Open the ascii file in R
+# 2. Use the cursor to highlight the entire script file
+# 3. Press either 'Source' or 'Ctrl + Enter' to run the entire script
+# 4. Open the resulting PDF file to analyze the results
+#_______________________________________________________________________________
+# Description of the Problem Statement:
+# Use a Monte Carlo simulation method to:
+# B) determine the value of pi with your estimated uncertainties
+#_______________________________________________________________________________
+# The code script for Problem Set 2 Question 4B is detailed below:
+#_______________________________________________________________________________
+
+# Importing a grid package library to enable enhanced functions for subsequent text based plotting in R
+library(grid)
+
+# Setting five different seed values for reproducibility and controlled randomness (variability) in the Monte Carlo simulations
+# Note: Different results are obtained for each seed, re-running the simulation with the same seed produces the same results
+seed_values <- c(3, 5, 7, 10, 14)
+
+# Specifying the convergence criteria, specifically the tolerance for the estimated pi values
+# Note: The Monte Carlo simulation iterations stop if the last 100 estimates fluctuate within the bounds of this threshold
+convergence_threshold <- 0.005
+
+# Defining the maximum number of iterations for the Monte Carlo simulation (an upper limit or bound that cannot be exceeded)
+# Note: This helps to reduce long computation times and prevent infinite loops during the simulation 
+max_simulations <- 10000
+#_______________________________________________________________________________
+
+# Defining the colors for each seed value (3, 5, 7, 10, 14) for subsequent plotting
+plot_colors <- c("blue", "red", "gray", "orange", "purple")
+
+# Creating a PDF file to save the Monte Carlo simulation results for all of the seeds
+pdf(file = "Monte_Carlo_Simulation_Results_4B.pdf", width = 8, height = 6)
+#_______________________________________________________________________________
+
+# Initializing an empty list to store the results from each Monte Carlo simulation
+results_list <- list()
+#_______________________________________________________________________________
+
+# Using a for loop to run independent Monte Carlo simulations for each seed value
+for (seed_index in seq_along(seed_values)) {
+  
+  # Extracting the current seed value
+  seed <- seed_values[seed_index]
+  
+  # Setting the seed to ensure reproducibility of the results
+  set.seed(seed)  
+  
+  # Initializing numeric vectors to store the results
+  # Using a numeric vector to store the estimated pi values at each iteration
+  pi_estimates <- numeric(max_simulations)
+  # Using a numeric vector to store the standard deviations of estimated pi values over the iterations
+  standard_deviation_pi <- numeric(max_simulations)
+  
+  # Specifying control variables as convergence stopping criteria
+  # A Boolean flag to monitor convergence
+  has_converged <- FALSE
+  
+  # Initializing an iteration counter to track the number of iterations
+  iteration <- 1
+#_______________________________________________________________________________
+  
+  # Running the Monte Carlo simulation for a specific seed until the maximum number of iterations (upper bound = 10,000 iterations) or the convergence criterion are met
+  while (!has_converged && iteration <= max_simulations) {
+    
+    # Producing random x and y coordinates that are within the unit square: [-1,1] x [-1,1]
+    # Generating uniformly distributed x coordinate values
+    x <- runif(iteration, -1, 1)
+    # Generating uniformly distributed y coordinate values
+    y <- runif(iteration, -1, 1)
+    
+    # Counting the number of x, y coordinate points that lie inside the unit circle
+    inside_circle <- sum(x^2 + y^2 <= 1)
+    
+    # Estimating the value of pi using a Monte Carlo approximation formula 
+    # Note: pi is approximately equivalent to: (4 * the number of points inside the circle)/(total number of generated points)
+    pi_estimates[iteration] <- (inside_circle / iteration) * 4
+    
+    # Calculating the standard deviation of the pi estimates (if more than 1 iteration is finished)
+    if (iteration > 1) {
+      standard_deviation_pi[iteration] <- sd(pi_estimates[1:iteration])
+    }
+    
+    # Checking for convergence criteria after 1,000 iterations of the Monte Carlo simulation
+    # Note: If the last 100 estimates fluctuate within the bounds of the threshold, the simulation stops
+    if (iteration > 1000) {
+      # Examining the most recent 100 computed pi estimates
+      recent_estimates <- pi_estimates[(iteration - 99):iteration]
+      # Calculating the mean of the last 100 pi estimates
+      mean_recent <- mean(recent_estimates)
+      # Note: if all recent pi estimates fall within the previously defined threshold range from the mean, it is assumed that the simulation has converged and the loop is terminated
+      if (all(abs(recent_estimates - mean_recent) < convergence_threshold)) {
+        has_converged <- TRUE
+      }
+    }
+    
+    # Incrementing the iteration counter for the upcoming simulation step
+    iteration <- iteration + 1
+  }
+  
+  # Storing the final results of the simulation for each seed in a structured list
+  results_list[[seed_index]] <- list(
+    
+    # The seed value examined in the Monte Carlo simulation run
+    seed = seed,
+    
+    # The total number of iterations of the Monte Carlo simulation performed
+    iterations = iteration - 1,
+    
+    # Storing all of the pi estimates up to the final iteration of the Monte Carlo simulation
+    pi_estimates = pi_estimates[1:(iteration - 1)],
+    
+    # Storing all of the standard deviation of estimated pi values up to the final iteration of the Monte Carlo simulation
+    standard_deviation_pi = standard_deviation_pi[1:(iteration - 1)],
+    
+    # Storing the last estimated pi value calculated
+    final_estimate_pi = pi_estimates[iteration - 1]
+  )
+}
+#_______________________________________________________________________________
+#### PLOT 1 ####
+
+# Defining the y-axis range dynamically based on the estimated pi values
+# Note: This ensures that the y-axis range is large enough so that all values are visible on the plot
+minimum_pi_value <- min(sapply(results_list, function(x) min(x$pi_estimates, na.rm = TRUE)))
+maximum_pi_value <- max(sapply(results_list, function(x) max(x$pi_estimates, na.rm = TRUE)))
+
+# Plotting the Estimated pi values for each seed (y-axis) over the number of iterations (x-axis)
+plot(NULL, xlim = c(1, max(sapply(results_list, function(x) x$iterations))),
+     
+     # Specifying expanded y-axis limits to enable optimal observation of the results
+     ylim = c(minimum_pi_value - 0.1, maximum_pi_value + 0.1), type = "n", 
+     
+     # Specifying the x-axis label
+     xlab = "Number of Iterations",
+     
+     # Specifying the y-axis label
+     ylab = "Estimated Value of Pi",
+     
+     # Specifying the label for the plot title
+     main = "Plot 1: Estimated Value of Pi Over Number of Iterations")
+
+# Using a for loop to loop through the stored results for each seed and to plot the results
+for (seed_index in seq_along(results_list)) {
+  lines(1:results_list[[seed_index]]$iterations, results_list[[seed_index]]$pi_estimates, 
+        col = plot_colors[seed_index], lwd = 0.1)
+}
+
+# Creating and formatting a legend to label the results for the five different seed values examined
+legend("topright", legend = c(paste("Seed:", seed_values), "True pi value"), 
+       col = c(plot_colors, "black"), lwd = c(rep(1.5, length(seed_values)), 1), lty = c(rep(1, length(seed_values)), 2), inset = 0.02)
+
+# Adding a reference line to denote the true value of pi (3.1415...) on the plot for comparison/reference
+# Note: h = pi specifies the value for pi; lty = 2 specifies a dashed line; lwd specifies line width
+abline(h = pi, col = "black", lty = 2, lwd = 1)
+#_______________________________________________________________________________
+#### PLOT 2 ####
+
+# Plotting the standard deviation of the pi estimates for each seed (y-axis) over the number of iterations (x-axis)
+# Note: Starting from iteration 2 (not plotting iteration 1 because it makes no sense to plot the standard deviation of a single value)
+plot(NULL, xlim = c(2, max(sapply(results_list, function(x) x$iterations))),
+     ylim = c(0, max(sapply(results_list, function(x) max(x$standard_deviation_pi[-1], na.rm = TRUE)))), type = "n",
+     
+     # Specifying the x-axis label
+     xlab = "Number of Iterations",
+     
+     # Specifying the y-axis label
+     ylab = "Standard Deviation of Pi Estimates",
+     
+     # Specifying the label for the plot title
+     main = "Plot 2: Standard Deviation of Pi Estimates Over Number of Iterations")
+
+# Using a for loop to loop through the stored results and to plot the results for each seed (starting from the second iteration)
+for (seed_index in seq_along(results_list)) {
+  lines(2:results_list[[seed_index]]$iterations, results_list[[seed_index]]$standard_deviation_pi[-1], 
+        col = plot_colors[seed_index], lwd = 1)
+}
+# Creating and formatting a legend to label the results for the five different seed values examined
+# Note: lwd specifies line with; the legend is also offset slightly so it does not overlap with the plot border
+legend("topright", legend = paste("Seed:", seed_values), col = plot_colors, lwd = 1.5, inset = 0.02)
+#_______________________________________________________________________________
+#### ADDING THE RESULTS SUMMARY TO THE PDF FILE ####
+
+# Creating a new blank plot for the final PDF page
+plot.new()
+
+summary_text <- paste0(
+  "MONTE CARLO SIMULATION RESULTS\n",
+  "_____________________________________________\n\n"
+)
+# Using a for loop to loop through the results for each seed
+# Note: purpose is to append the results to the PDF pages after the two plots
+# Note: seq_along generates a sequence from 1 to the length of the results list to iterate over the stored results
+for (seed_index in seq_along(results_list)) {
+  result <- results_list[[seed_index]]
+  
+  # Calculating the average estimated pi value
+  # Note: rounding the average estimated pi value result for each seed to four decimal places
+  average_estimated_pi_value <- round(mean(result$pi_estimates), 4)
+  
+  # Calculating the final standard deviation of the estimated pi values
+  if (length(result$pi_estimates) > 1) {
+    # Calculating the standard deviation of the estimated values (round the result to 4 decimal places)
+    final_std_dev <- round(sd(result$pi_estimates), 4)  
+  } else {
+    # Note: if only one estimate exists, calculating the standard deviation is not meaningful
+    final_std_dev <- "N/A"  
+  }
+  # Appending the results to the summary text to paste onto the final PDF page
+  summary_text <- paste0(
+    summary_text,
+    "Seed: ", result$seed, "\n",
+    "Average Estimated Value of Pi: ", average_estimated_pi_value, "\n",
+    "Final Standard Deviation of Estimated Pi value: ", final_std_dev, "\n\n"
+  )
+}
+# displaying and formatting the key results for each seed on the final PDF page
+# Note: just = "left" specifies left justification alignment for the text; x and y values indicate positioning on the page
+grid.text(summary_text, x = 0.1, y = 0.5, just = "left", gp = gpar(fontsize = 10, fontface = "bold"))
+#_______________________________________________________________________________
+# Closing the PDF file
+dev.off()
+
+
