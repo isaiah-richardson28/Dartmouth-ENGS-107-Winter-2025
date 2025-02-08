@@ -1,0 +1,700 @@
+# Course: ENGS 107: Bayesian Statistical Modeling and Computation
+# Problem Set 3: Analytical Methods / Bayes Monte Carlo / Grid Methods
+# Professor: Dr. Klaus Keller PhD
+# Due Date: Friday, February 14, 2025 at 11:59 pm
+# File name: [isaiah.d.richardson.th@dartmouth.edu].ps#3.R
+# Software: R and RStudio
+#_______________________________________________________________________________
+# Author: Isaiah D. Richardson, M.S. (IDR)
+# Copyright: copyright by the author
+# License: this code is distributed under the GNU GENERAL PUBLIC LICENSE v3.0
+# License: for more information regarding GNU GENERAL PUBLIC LICENSE Version 3 visit: https://www.gnu.org/licenses/why-not-lgpl.html
+# There is no warranty on this R code script for ENGS 107 Question 4A
+#_______________________________________________________________________________
+# Version 1: last changes made on: February 7, 2025
+#_______________________________________________________________________________
+# Sources:
+# - Personal correspondence with Dr. Klaus Keller during in-person office hours to conceptually discuss the distinction between the prior, likelihood function, and posterior(s) for this problem set, the purpose of the prior, and how to graph the results (01/31/2025; 02/03/2025; 02/05/2025; 02/07/2025)
+# - Personal correspondence with TA Siddhi Gothivrekar during office hours in-person and over Zoom to discuss and clarify the expectations for each of the tasks, how to graph the results, and whether or not the posterior PDF should overlap with the likelihood PDf for tasks 4 and 5 (01/31/2025; 02/03/2025)
+# - R help files accessed through R-studio for syntax
+# - Short, T. (2004). R Reference Card. For understanding how to use functions and commands in R including: seq, dnorm, pnorm, xaxt, xlim, ylim, abline, bty, lty, lwd, ifelse, max, text, plot, cex, $, font.main, cex.main  
+# - Douglas, A., Roos, D., Mancini, F., Couto, A. & Lusseau, D. (2024). An Introduction to R. For understanding how to produce plots and histograms in R using the base R plot commands.
+# - The coin-example.R from Canvas for general formatting of the code script and layout of the header notes
+# - Applegate, P.J., Keller, K. et al.(2016). Risk Analysis in the Earth Sciences: A Lab Manual with Exercises in R. For understanding the RStudio interface and basic functions in R
+# - Grolemund, G. Hands-On Programming with R. For understanding the RStudio interface and basic functions in R
+# - Venables, W.N., Smith, D.M. & the R Core Team. (2024). An Introduction to R Notes on R: A Programming Environment for Data Analysis and Graphics Version 4.4.2 for understanding functions, commands, and the basics of how to plot results
+# - Verzani, J. (2002). simpleR - Using R for Introductory Statistics. Used for understanding notation, functions, and formatting of the code script
+# - Rizzo, M.L. (2019). Statistical Computing with R (2nd edition). For understanding syntax, functions, and how to perform a Monte Carlo simulation for task 5
+# - Chang, W. (2013). R Graphics Cookbook: Practical Recipes for Visualizing Data. O’Reilly Media. For understanding the syntax, functions, formatting, and basics for producing plots and visualizing data in R.
+# - Murrell, P. (2005). R Graphics. Chapman & Hall/CRC. For understanding the basics of how to plot results visually and textually in R.
+# - Gillespie, C. & Lovelace, R. (2016). Efficient R Programming: A Practical Guide to Smarter Programming. O’Reilly Media. For better understanding the RStudio interface, and optimizing the code structure and performance.
+# - Gelman, A., Carlin, J. B., Stern, H. S., Dunson, D. B., Vehtari, A., & Rubin, D. B. (2013). Bayesian Data Analysis (3rd ed.). CRC Press. For deepening my conceptual understanding of grid-based methods for Bayesian updating
+# - Bernardo, J. M., & Smith, A. F. M. (2000). Bayesian Theory. Wiley. To gain a conceptual understanding of grid-based methods.
+# - Jaynes, E. T. (2003). Probability Theory: The Logic of Science. Cambridge University Press. For understanding uniform and truncated uniform priors while I was workin to establish my proper prior.
+# - Robert, C. P., & Casella, G. (2004). Monte Carlo Statistical Methods (2nd ed.). Springer. For understanding how to set up a Monte Carlo simulation for task 5
+# - Wickham, H. (2019). Advanced R (2nd ed.). CRC Press. For understanding functions and how to perform a Monte Carlo simulation for task 5
+# - Biswal, A. (2024). An In-Depth Explanation of Cumulative Distribution Function. To gain a basic understanding of the cumulative distribution function (CDF)
+# - Chen, Y.C. (2018). Lecture 5: Survival Analysis. To gain a fundamental understanding of the survival function
+# - Ross, S.M. (2006). Simulation (4th ed). Academic Press. For understanding the basics of convergence and stopping criteria for a Bayes Monte Carlo simulation
+#_______________________________________________________________________________
+# Collaborators:
+# Emma Vejcik - Conceptually discussed the expectations for tasks 2 and 3. Discussed how to calculate the three estimates for task 2. Worked together to try to conceptually understand the meaning of a proper prior for task 3 (01/28/2025)
+#_______________________________________________________________________________
+# To run this code script file:
+# 1. Open the ascii file in R
+# 2. Use the cursor to highlight the entire code script
+# 3. Press either 'Source', 'Ctrl + Enter', or 'run' to run the entire code script
+# 4. Open the resulting PDF file to analyze the results
+#===============================================================================
+#### THE PROBLEM ####
+# You are part of a team that is refining a safety system for an airplane that can land an airplane automatically
+# at the next available and safe airport in case of an emergency.
+# The computer system makes a decision on which airport to choose to land based on factors such as wind, runway length, legal
+# requirements, fuel use, and available fuel. The team asks you to design, test, and document a draft computer program that takes
+# as input a reading from a fuel sensor (together with some other information) and produces an estimate of the usable fuel in the
+# tank with an estimate of the associated uncertainties.
+#===============================================================================
+#### THE INPUTS ####
+
+# Specifying the total fuel tank capacity (182 liters)
+total_fuel_tank_capacity <- 182
+
+# Specifying the digital fuel sensor standard deviation (20 liters)
+# Note: The digital fuel sensor has an error approximated as following a Gaussian distribution with a standard deviation of 20 liters
+fuel_sensor_standard_deviation <- 20
+
+# Specifying the fuel sensor reading (34 liters)
+fuel_sensor_reading <- 34
+
+# Specifying the airplane fuel consumption rate (18 liters per hour)
+# Note: This value is approximated as uncertain with a Gaussian standard deviation of 2 liters per hour
+airplane_fuel_consumption_rate <- 18
+
+# Specifying the standard deviation value for the airplane fuel consumption rate
+# Note: 18 liters approximated as uncertain with a Gaussian standard deviation of 2 liters per hour
+airplane_fuel_consumption_standard_deviation <- 2
+#_______________________________________________________________________________
+
+# Setting a seed to enable reproducibility of the results
+set.seed(210)
+#===============================================================================
+#### TASK 2 ####
+# Draw the probability density function for the usable fuel in the tank without any other information besides the fuel gauge reading.
+# Determine the expected value of available fuel, the most likely value of available fuel, and the probability of negative fuel in the tank.
+# Do these estimates make sense to you?
+#===============================================================================
+
+# Defining a broad range of fuel levels in the airplane tank
+# Note: The seq function generates a sequence of numbers; -60 indicates the starting value of the sequence up to the total fuel tank capacity of 182 liters
+# Note: It is obviously not possible to have a negative amount of fuel in the tank. -60 was selected as a lower limit for the PDF to prevent truncation of the left tail of the PDF for task 2
+# Note: by = 0.001 specifies the step size (or increment) from -60 to 182
+usable_fuel_in_tank <- seq(-60, total_fuel_tank_capacity, by = 0.001)
+
+# Using the dnorm function to calculate the probability density function (PDF) of usable fuel in the airplane tank based on a Gaussian distribution
+pdf_usable_fuel <- dnorm(usable_fuel_in_tank, mean = fuel_sensor_reading, sd = fuel_sensor_standard_deviation)
+#_______________________________________________________________________________
+#### CALCULATING THE ESTIMATES FOR TASK 2 ####
+
+# Calculating the expected value of available fuel in the tank (*this is the mean)
+expected_value_available_fuel <- sum(usable_fuel_in_tank * pdf_usable_fuel) / sum(pdf_usable_fuel)
+
+# Calculating the most likely value of available fuel in the tank (*this is the mode)
+most_likely_value_available_fuel <- usable_fuel_in_tank[which.max(pdf_usable_fuel)]
+
+# Using the pnorm function to calculate the probability of negative fuel in the tank
+probability_negative_fuel_in_tank <- pnorm(0, mean = fuel_sensor_reading, sd = fuel_sensor_standard_deviation)
+#_______________________________________________________________________________
+#### PREPARING THE PDF FILE FOR REPORTING THE RESULTS ####
+
+# Specifying the PDF file name 
+pdf_filename <- "ENGS_107_Problem_Set_3_Results.pdf"
+
+# Opening a PDF file for plotting; also specifying the width and height
+pdf(pdf_filename, width = 8, height = 6)
+#_______________________________________________________________________________
+#### PLOTTING THE PROBABILITY DENSITY FUNCTION (PDF) FOR TASK 2 (THE LIKELIHOOD FUNCTION) ####
+
+# Plotting the probability density function (PDF) for task 2
+# Note: type = 'l' specifies a line plot; lwd specifies the line width
+plot(usable_fuel_in_tank, pdf_usable_fuel, type = "l", col = "blue", lwd = 4,
+     
+     # Specifying the header/title for the plot
+     main = "TASK 2: PDF for Usable Fuel in the Airplane Tank (Likelihood Function)",
+     
+     # Specifying the x-axis label
+     xlab = "Fuel (Liters)",
+     
+     # Specifying the y-axis label
+     ylab = "Probability Density",
+     
+     # Removing the default x-axis labels
+     xaxt = "n",
+     
+     # Specifying the upper and lower limits of the x-axis to extend the x-axis improve readability of the likelihood function
+     xlim = c(-60, 200))
+
+# Adding custom labels to the x-axis to enhance the readability of the plot
+# Note: Specifying the bounds and labeled increments on the x-axis
+axis(1, at = seq(-60, 200, by = 20), labels = seq(-60, 200, by = 20))
+
+# Adding a vertical line to the plot denoting the expected value of available fuel (*the mean)
+# Note: lwd specifies the line width; lty = 2 specifies the line type as dashed
+abline(v = expected_value_available_fuel, col = "red", lwd = 2, lty = 2)
+
+# Adding a vertical line denoting the most likely value of available fuel (*the mode)
+# Note: lwd specifies the line width; lty = 3 specifies the line type as dotted
+abline(v = most_likely_value_available_fuel, col = "darkorange", lwd = 3, lty = 3)
+
+# Adding vertical lines to denote the fuel sensor standard deviation
+# Note: lwd specifies the line width; lty = 3 specifies the line type as dotted
+abline(v = c(fuel_sensor_reading - 20, fuel_sensor_reading + 20), col = "purple", lwd = 3, lty = 3)
+
+# Adding text to label the + 1 and - 1 standard deviation marks + 20 liters and - 20 liters from 34 liters (the fuel sensor reading) on the plot
+text(fuel_sensor_reading - 20, max(pdf_usable_fuel) * 0.7, "-1 SD", pos = 2, col = "purple")
+text(fuel_sensor_reading + 20, max(pdf_usable_fuel) * 0.7, "+1 SD", pos = 4, col = "purple")
+
+# Adding a legend to label the key features of the probability density function (PDF) plot
+# Note: lwd specifies the line width, lty specifies the line type (1 = solid, 2 = dashed, 3 = dotted)
+# Note: bty = 'o' draws a complete box (this is the default); box.col specifies the box color; inset offsets the box from the plot border
+legend("topright", legend = c("Likelihood Function", "Expected Value (Mean)", "Most Likely Value (Mode)", "Fuel Sensor SD"),
+       col = c("blue", "red", "darkorange", "purple"), lwd = c(4, 2, 3, 3), lty = c(1, 2, 3, 3), bty = "o", box.col = "black", inset = 0.02)
+
+#_______________________________________________________________________________
+
+# Opening a new plot to print the estimates calculated above on the second page of the PDF file
+plot.new()
+
+# Adding a title at the top of the results page of the PDF file
+title(main = "TASK 2: Estimates from the PDF of Usable Fuel in the Tank", font.main = 2, cex.main = 1.2)
+
+text(0.4, 0.8, paste(
+  
+  # Expected Value of Available Fuel (Mean) and rounded to 2 decimal places
+  "Expected Value of Available Fuel (Mean): ", round(expected_value_available_fuel, 2), "liters\n",
+  
+  # Most likely value of available fuel (mode) and rounded to 2 decimal places
+  "Most Likely Value of Available Fuel (Mode): ", round(most_likely_value_available_fuel, 2), "liters\n",
+  
+  # Probability of negative fuel in the tank, rounded to 1 decimal place and specified as a percentage
+  "Probability of Negative Fuel in the Tank: ", round(probability_negative_fuel_in_tank * 100, 1), "%\n"
+), cex = 1.2)
+
+#===============================================================================
+#### TASK 3 ####
+# How can you use a proper prior to address the issue of unrealistic fuel estimates in the tank. Define this physically
+# based prior for you (meaning this is your subjective prior)
+#===============================================================================
+
+# Creating a variable to specify the minimum realistic fuel capacity in the airplane tank as 0 liters of fuel
+minimum_fuel_tank_capacity <- 0
+
+# Determining the height of the uniform prior distribution that constrains the airplane fuel level between 0 liters and 182 liters
+# Note: The total probability must integrate to 1, so the height is being set accordingly
+# Note: The uniform prior assumes that all fuel levels are equally likely within the realistic range of 0 - 182 liters
+prior_height <- 1 / (total_fuel_tank_capacity - minimum_fuel_tank_capacity)
+
+# Defining the prior probability distribution over the entire range of usable fuel in the tank
+# Note: This distribution assigns a constant probability density within the realistic fuel range and a probability of zero to values outside of the range
+prior <- ifelse(usable_fuel_in_tank >= minimum_fuel_tank_capacity & usable_fuel_in_tank <= total_fuel_tank_capacity, prior_height, 0)
+
+# Creating a sequence of fuel values for plotting the prior
+fuel_range <- seq(minimum_fuel_tank_capacity, total_fuel_tank_capacity, length.out = 100)
+
+# Calculating the prior probability values corresponding to each fuel level
+# Note: There is a constant prior probability for all valid fuel levels
+prior_values <- rep(prior_height, length(fuel_range))
+#_______________________________________________________________________________
+
+# Plotting the proper prior with the likelihood function for task 3
+# Note: type = 'l' specifies a line plot; lwd specifies the line width; lty = 1 specifies the line type as solid
+plot(usable_fuel_in_tank, pdf_usable_fuel, type = "l", col = "blue", lwd = 4, lty = 1,
+     
+     # Specifying the header/title for the plot
+     main = "TASK 3: Plot of the Likelihood Function with the Proper Prior",
+     
+     # Specifying the x-axis label
+     xlab = "Fuel (Liters)",
+     
+     # Specifying the y-axis label
+     ylab = "Probability Density",
+     
+     # Removing the default x-axis labels
+     xaxt = "n",
+     
+     # Specifying the upper and lower limits of the x-axis to extend the x-axis improve readability of the likelihood function
+     xlim = c(-60, 200))
+
+# Adding custom labels to the x-axis to enhance the readability of the plot
+# Note: Specifying the bounds and labeled increments on the x-axis
+axis(1, at = seq(-60, 200, by = 20), labels = seq(-60, 200, by = 20))
+
+# Adding a vertical line to the plot denoting the expected value of available fuel (*the mean)
+# Note: lwd specifies the line width; lty = 2 specifies the line type as dashed
+abline(v = expected_value_available_fuel, col = "red", lwd = 2, lty = 2)
+
+# Adding a vertical line denoting the most likely value of available fuel (*the mode)
+# Note: lwd specifies the line width; lty = 3 specifies the line type as dotted
+abline(v = most_likely_value_available_fuel, col = "darkorange", lwd = 3, lty = 3)
+
+# Adding vertical lines to denote the fuel sensor standard deviation
+# Note: lwd specifies the line width; lty = 3 specifies the line type as dotted
+abline(v = c(fuel_sensor_reading - 20, fuel_sensor_reading + 20), col = "purple", lwd = 3, lty = 3)
+
+# Adding text to label the + 1 and - 1 standard deviation marks + 20 liters and - 20 liters from 34 liters (the fuel sensor reading) on the plot
+text(fuel_sensor_reading - 20, max(pdf_usable_fuel) * 0.7, "-1 SD", pos = 2, col = "purple")
+text(fuel_sensor_reading + 20, max(pdf_usable_fuel) * 0.7, "+1 SD", pos = 4, col = "purple")
+
+# Adding vertical dashed lines to denote the bounds for the proper prior
+segments(x0 = minimum_fuel_tank_capacity, y0 = 0, x1 = minimum_fuel_tank_capacity, y1 = prior_height, col = "darkgray", lwd = 3, lty = 2)
+segments(x0 = total_fuel_tank_capacity, y0 = 0, x1 = total_fuel_tank_capacity, y1 = prior_height, col = "darkgray", lwd = 3, lty = 2)
+
+# Adding a horizontal dashed line for the proper prior between 0 liters and 182 liters to create a rectangle
+segments(x0 = minimum_fuel_tank_capacity, y0 = prior_height, x1 = total_fuel_tank_capacity, y1 = prior_height, col = "darkgray", lwd = 3, lty = 2)
+
+# Adding a legend to label the key features of the probability density function (PDF) plot
+# Note: lwd specifies the line width, lty specifies the line type (1 = solid, 2 = dashed, 3 = dotted)
+# Note: bty = 'o' draws a complete box (this is the default); box.col specifies the box color; inset offsets the box from the plot border
+legend("topright", legend = c("Likelihood Function", "Proper Prior", "Expected Value (Mean)", "Most Likely Value (Mode)", "Fuel Sensor SD"),
+       col = c("blue", "darkgray", "red", "darkorange", "purple"), lwd = c(4, 3, 2, 3, 3), lty = c(1, 2, 2, 3, 3), bty = "o", box.col = "black", inset = 0.02)
+
+#===============================================================================
+#### TASK 4 ####
+# Use a grid-based method to determine your Bayesian update from your prior and the likelihood function. Add this posterior
+# to the plot produced above. Determine now the probability of negative fuel. Has this fixed the issue? If so, how?
+#===============================================================================
+
+# Renaming the pdf_usuable_fuel variable as 'likelihood' for clarity in the remainder of the code script
+# Note: The likelihood function represents the probability of observing the data given a specific fuel level
+likelihood <- pdf_usable_fuel
+
+# Calculating the posterior probability using Bayes' Theorem (without normalization)
+# Note: posterior is proportional to the product of the prior * likelihood
+posterior <- likelihood * prior
+
+# Ensuring that no probability mass is assigned to negative fuel values as this physically unrealistic
+posterior[usable_fuel_in_tank < 0] <- 0
+
+# Normalizing the posterior so that it sums to 1. The purpose of this is to turn it into a proper probability distribution
+# Note: The normalization factor is the sum of all weighted probabilities (considering grid spacing)
+posterior <- posterior / sum(posterior * diff(usable_fuel_in_tank)[1])
+#_______________________________________________________________________________
+
+# Calculating the expected value of available fuel (the mean) from the Bayesian update using the grid-based method
+posterior_expected_value <- sum(usable_fuel_in_tank * posterior * diff(usable_fuel_in_tank)[1])
+
+# Calculating the most likely value of available fuel (the mode) from the Bayesian update using the grid-based method
+posterior_most_likely_value <- usable_fuel_in_tank[which.max(posterior)]
+
+# Calculating the probability of negative fuel in the airplane tank from the Bayesian update using the grid-based method
+# Note: This value should be 0 as a result of integrating the proper prior written into the code script under task 3
+posterior_probability_negative_fuel <- sum(posterior[usable_fuel_in_tank < 0] * diff(usable_fuel_in_tank)[1])
+#_______________________________________________________________________________
+#### PLOTTING THE POSTERIOR FROM THE GRID-BASED METHOD WITH THE LIKELIHOOD FUNCTION ####
+
+# Adjusting the y-axis limit to ensure that both the likelihood and posterior distributions are visible on the plot
+# Note: Multiplied by 1.1 to add some buffer on the y-axis
+max_density <- max(c(pdf_usable_fuel, posterior)) * 1.1 
+
+# Plotting the posterior of the Bayesian update from the grid-based method with the likelihood function
+# Note: type = 'l' specifies a line plot; lwd specifies the line width; lty = 1 specifies the line type as solid
+plot(usable_fuel_in_tank, pdf_usable_fuel, type = "l", col = "blue", lwd = 4, lty = 1,
+     
+     # Specifying the header/title of the plot
+     main = "TASK 4: Bayesian Posterior of Usable Fuel (Grid-Based Method)",
+     
+     # Specifying the x-axis label
+     xlab = "Fuel (Liters)",
+     
+     # Specifying the y-axis label
+     ylab = "Probability Density",
+     
+     # Removing the default x-axis labels
+     xaxt = "n",
+     
+     # Specifying the upper and lower limits of the x-axis to extend the x-axis to ensure that the entire likelihood function is visible on the plot
+     xlim = c(-60, 200),
+     
+     # Specifying the y-axis limits to ensure that both the likelihood function and posterior are visible on the plot
+     ylim = c(0, max_density))
+
+# Adding custom x-axis labels to ensure that the entire likelihood function is visible on the plot
+axis(1, at = seq(-60, 200, by = 20), labels = seq(-60, 200, by = 20))
+
+# Including a vertical line to denote the expect value of available fuel calculated from the posterior
+# Note: lwd specifies the line width; lty = 2 specifies the line type as dashed
+abline(v = posterior_expected_value, col = "red", lwd = 2, lty = 2)
+
+# Including a vertical line to denote the most likely value of available fuel calculated from the posterior
+# Note: lwd specifies the line width; lty = 3 specifies the line type as dotted
+abline(v = posterior_most_likely_value, col = "darkorange", lwd = 3, lty = 3)
+
+# Including a vertical line to denote + 1 and - 1 standard deviations from the fuel sensor reading of 34 liters
+# Note: the standard deviation is 20 liters; lwd specifies the line width; lty = 3 specifies the line type as dotted
+abline(v = c(fuel_sensor_reading - 20, fuel_sensor_reading + 20), col = "purple", lwd = 3, lty = 3)
+
+# Adding text to label the vertical purple, dotted lines denoting the standard deviation range of +/- 20 liters from the fuel sensor reading of 34 liters
+text(fuel_sensor_reading - 20, max_density * 0.7, "-1 SD", pos = 2, col = "purple", cex = 1.2)
+text(fuel_sensor_reading + 20, max_density * 0.7, "+1 SD", pos = 4, col = "purple", cex = 1.2)
+
+# Overlaying the posterior distribution from the grid-based method on the plot with the likelihood function and the prior
+# Note: This only includes valid (non-negative) fuel values (i.e., fuel values between 0 liters and 182 liters)
+# Note: lwd specifies the line width and lty = 1 specifies the line type as solid
+valid_indices <- usable_fuel_in_tank >= 0
+lines(usable_fuel_in_tank[valid_indices], posterior[valid_indices], col = "green", lwd = 4, lty = 1)
+
+# Adding vertical dashed lines to denote the bounds of the proper prior
+segments(x0 = minimum_fuel_tank_capacity, y0 = 0, x1 = minimum_fuel_tank_capacity, y1 = prior_height, col = "darkgray", lwd = 3, lty = 2)
+segments(x0 = total_fuel_tank_capacity, y0 = 0, x1 = total_fuel_tank_capacity, y1 = prior_height, col = "darkgray", lwd = 3, lty = 2)
+
+# Adding a horizontal dashed line for the proper prior between 0 liters and 182 liters to create a rectangle
+segments(x0 = minimum_fuel_tank_capacity, y0 = prior_height, x1 = total_fuel_tank_capacity, y1 = prior_height, col = "darkgray", lwd = 3, lty = 2)
+
+# Including a legend in the upper right corner of the plot to denote the key aspects on the plot
+# Note: bty = 'o' places a box around the legend; box.col specifies the box color as black; cex = 1.0 specifies the character size (font size)
+legend("topright", legend = c("Posterior (Grid-Based)", "Likelihood Function", "Proper Prior", "Expected Value (Mean)", "Most Likely Value (Mode)", "Fuel Sensor SD"),
+       col = c("green", "blue", "darkgray", "red", "darkorange", "purple"), lwd = c(4, 4, 3, 2, 3, 3), lty = c(1, 1, 2, 2, 3, 3),
+       bty = "o", box.col = "black", inset = 0.02, cex = 1.0)
+#_______________________________________________________________________________
+
+# Opening a new plot to print the estimates calculated above on the fourth page of the PDF file
+plot.new()
+
+# Adding a title at the top of the results page
+title(main = "TASK 4: Estimates after Bayesian Update using Grid-Based Method", font.main = 2, cex.main = 1.2)
+
+text(0.4, 0.8, paste(
+  
+  # Expected Value of Available Fuel (mean) and rounded to 1 decimal place
+  "Expected Value of Available Fuel (Mean): ", round(posterior_expected_value, 1), "liters\n",
+  
+  # Most likely value of Available Fuel (mode) and rounded to 2 decimal places
+  "Most Likely Value of Available Fuel (Mode): ", round(posterior_most_likely_value, 2), "liters\n",
+  
+  # Probability of negative fuel in the tank, rounded to 1 decimal place, and specified as a percentage
+  "Probability of Negative Fuel in the Tank: ", round(posterior_probability_negative_fuel * 100, 1), "%\n"
+), cex = 1.2)
+
+#===============================================================================
+#### TASK 5 ####
+# Repeat the step above using a Bayes Monte Carlo method
+#===============================================================================
+
+# Specifying the maximum number of Monte Carlo samples (10 million)
+maximum_iterations <- 10000000  
+
+# Generating samples from the proper prior
+# Note: Assuming that there is a uniform distribution within the specified airplane tank capacity of 0 liters to 182 liters
+# Note: Also ensuring that all sampled values are within the specified fuel range
+prior_samples <- runif(maximum_iterations, min = 0, max = total_fuel_tank_capacity) 
+
+# Calculating the likelihood for each prior sample (assuming a normal distribution centered at the fuel sensor reading)
+likelihood_values <- dnorm(prior_samples, mean = fuel_sensor_reading, sd = fuel_sensor_standard_deviation)
+
+# Calculating the posterior weights using Bayes' Theorem (i.e., the posterior is proportional to likelihood * prior)
+# Note: The weights are also normalized
+posterior_weights <- likelihood_values / sum(likelihood_values)
+
+# Implementing a stopping condition to ensure that the Monte Carlo simulation does not exceed the maximum number of samples (10 million)
+current_iterations <- length(prior_samples)
+if (current_iterations > maximum_iterations) {
+  prior_samples <- prior_samples[1:maximum_iterations]
+  posterior_weights <- posterior_weights[1:maximum_iterations]
+}
+
+# Introducing a variable called sampling size to ensure that resampling from the posterior does not exceed the maximum number of samples (10 million)
+sampling_size <- min(current_iterations, maximum_iterations)
+
+# Re-sampling from the posterior using importance sampling
+# Note: replace = TRUE specifies to perform sampling with replacement
+posterior_samples <- sample(prior_samples, size = sampling_size, replace = TRUE, prob = posterior_weights)
+#_______________________________________________________________________________
+
+# Calculating the expected value of available fuel in the airplane tank from the Bayesian update using the Monte Carlo simulation
+expected_value_monte_carlo <- mean(posterior_samples)
+
+# Calculating the most likely value of available fuel in the airplane tank from the Bayesian update using the Monte Carlo simulation
+most_likely_value_monte_carlo <- density(posterior_samples)$x[which.max(density(posterior_samples)$y)]
+
+# Calculating the probability of negative fuel in the tank from the Bayesian update using the Monte Carlo simulation
+probability_negative_fuel_monte_carlo <- sum(posterior_samples < 0) / length(posterior_samples)
+#_______________________________________________________________________________
+#### PRODUCING A HISTOGRAM PLOT OF THE POSTERIOR DISTRIBUTION FROM THE MONTE CARLO SIMULATION ####
+
+# Creating histogram data for the posterior distribution from the Monte Carlo simulation
+# Note: length.out creates a sequence of 100 evenly spaced breakpoints between 0 and 182 liters; plot = FALSE prevents the histogram from being plotted before normalization
+histogram_data <- hist(posterior_samples, breaks = seq(0, total_fuel_tank_capacity, length.out = 100), plot = FALSE)
+
+# Normalizing the histogram density so that the total area sums to a value of 1
+bin_width <- diff(histogram_data$breaks)[1]
+normalized_histogram_density <- histogram_data$counts / (sum(histogram_data$counts) * bin_width)
+
+# Plotting the normalized histogram from the Monte Carlo simulation
+# Note: type = 'h' specifies a histogram; lwd specifies the line width
+plot(histogram_data$mids, normalized_histogram_density, type = "h", col = "gray", lwd = 4,
+     
+     # Specifying the header/title for the histogram plot
+     main = "TASK 5: Histogram of Posterior Distribution from Monte Carlo Simulation",
+     
+     # Specifying the x-axis label for the histogram plot
+     xlab = "Fuel (Liters)",
+     
+     # Specifying the y-axis label for the histogram plot
+     ylab = "Probability Density",
+     
+     # Removing the default x-axis labels
+     xaxt = "n",
+     
+     # Specifying the desired x-axis labels to extend from 0 to 200
+     xlim = c(0, 200))
+
+# Adding custom x-axis labels to enhance readability of the histogram plot
+axis(1, at = seq(0, 200, by = 20), labels = seq(0, 200, by = 20))
+
+# Using a for loop to add histogram bars to the plot (with normalized density)
+for (i in 1:length(histogram_data$counts)) {
+  rect(histogram_data$breaks[i], 0, histogram_data$breaks[i + 1], normalized_histogram_density[i],
+       border = "black", col = "gray")
+}
+
+# Adding a vertical line to denote the expected value of available fuel (mean) on the histogram plot
+abline(v = expected_value_monte_carlo, col = "red", lwd = 3, lty = 2)
+
+# Adding a vertical line to denote the most likely value of available fuel (mode) on the histogram plot
+abline(v = most_likely_value_monte_carlo, col = "darkorange", lwd = 3, lty = 3)
+
+# Adding a legend to label the key components of the histogram plot
+# Note: lwd specifies the line width, lty specifies the line type
+legend("topright", legend = c("Expected Value (Mean)", "Most Likely Value (Mode)"),
+       col = c("red", "darkorange"), lwd = 3, lty = c(2, 3), bty = "o", box.col = "black", inset = 0.02, cex = 1.2)
+#_______________________________________________________________________________
+#### PLOTTING THE POSTERIOR FROM THE MONTE-CARLO SIMULATION WITH THE POSTERIOR FROM THE GRID-BASED METHOD AND THE LIKELIHOOD FUNCTION ####
+
+# Plotting the posterior from the Monte Carlo simulation with the likelihood function and the posterior from the grid-based method
+# Note: Multiplied by 1.1 to enhance the visability of the plot
+# Note: lwd specifies the line width, lty = 1 specifies the line type as solid
+max_density <- max(c(pdf_usable_fuel, posterior, density(posterior_samples)$y)) * 1.1  
+plot(usable_fuel_in_tank, pdf_usable_fuel, type = "l", col = "blue", lwd = 4, lty = 1,
+     
+     # Specifying the title/header of the plot
+     main = "TASK 5: Bayesian Posterior of Usable Fuel (Monte Carlo Method)",
+     
+     # Specifying the x-axis label for the plot
+     xlab = "Fuel (Liters)", 
+     
+     # Specifying the y-axis label for the plot
+     ylab = "Probability Density",
+     
+     # Removing the default x-axis labels
+     xaxt = "n",
+     
+     # Specifying the x-axis range to ensure that the full likelihood function is visible on the plot
+     xlim = c(-60, 200),
+     
+     # Specifying the y-axis limits to ensure that both PDFs and the likelihood function are fully visible on the plot
+     ylim = c(0, max_density))
+
+# Adding custom x-axis labels to enhance readability of the plot
+axis(1, at = seq(-60, 200, by = 20), labels = seq(-60, 200, by = 20)) 
+lines(usable_fuel_in_tank[valid_indices], posterior[valid_indices], col = "green", lwd = 4, lty = 1) 
+
+# Performing the Monte Carlo posterior density estimation
+monte_carlo_density <- density(posterior_samples, from = 0, to = total_fuel_tank_capacity, n = length(usable_fuel_in_tank))
+
+# Normalizing the Monte Carlo density function
+bin_width_mc <- diff(monte_carlo_density$x)[1]
+normalized_monte_carlo_density <- monte_carlo_density$y / sum(monte_carlo_density$y * bin_width_mc)
+
+# Overlaying the Monte Carlo posterior PDF onto the plot
+valid_mc_indices <- (monte_carlo_density$x >= 0) & (monte_carlo_density$x <= total_fuel_tank_capacity)
+lines(monte_carlo_density$x[valid_mc_indices], normalized_monte_carlo_density[valid_mc_indices], col = "gold", lwd = 4)
+
+# Adding vertical dashed lines to denote the bounds of the proper prior from 0 liters to 182 liters
+segments(x0 = minimum_fuel_tank_capacity, y0 = 0, x1 = minimum_fuel_tank_capacity, y1 = prior_height, col = "darkgray", lwd = 3, lty = 2)
+segments(x0 = total_fuel_tank_capacity, y0 = 0, x1 = total_fuel_tank_capacity, y1 = prior_height, col = "darkgray", lwd = 3, lty = 2)
+
+# Adding a horizontal dashed line for the proper prior prior from 0 liters to 182 liters to form a rectangle
+segments(x0 = minimum_fuel_tank_capacity, y0 = prior_height, x1 = total_fuel_tank_capacity, y1 = prior_height, col = "darkgray", lwd = 3, lty = 2)
+
+# Adding a vertical line to denote the expected value of available fuel (mean) on the histogram plot
+abline(v = expected_value_monte_carlo, col = "red", lwd = 3, lty = 2)
+
+# Adding a vertical line to denote the most likely value of available fuel (mode) on the histogram plot
+abline(v = most_likely_value_monte_carlo, col = "darkorange", lwd = 3, lty = 3)
+
+# Adding a legend to label the key elements of the plot
+# Note: lwd specifies the line width, lty specifies the line type
+legend("topright", legend = c("Posterior (Monte Carlo)", "Posterior (Grid-Based)", "Likelihood Function", "Proper Prior", "Expected Value (Mean)", "Most Likely Value (Mode)"),
+       col = c("gold", "green", "blue", "darkgray", "red", "darkorange"), lwd = c(4, 4, 4, 3, 3, 3), lty = c(1, 1, 1, 2, 2, 3),
+       bty = "o", box.col = "black", inset = 0.02, cex = 1.2)
+#_______________________________________________________________________________
+
+# Opening a new plot to print the estimates calculated above on sixth page of the PDF file
+plot.new()
+
+# Adding a title at the top of the results page
+title(main = "TASK 5: Estimates after Bayesian Update using Monte Carlo Method", font.main = 2, cex.main = 1.2)
+text(0.4, 0.8, paste(
+  
+  # Expected value of available fuel and rounded to 1 decimal place
+  "Expected Value of Available Fuel (Mean):", round(expected_value_monte_carlo, 1), "liters\n",
+  
+  # Most likely value of available fuel and rounded to 1 decimal place
+  "Most Likely Value of Available Fuel (Mode):", round(most_likely_value_monte_carlo, 1), "liters\n",
+  
+  # Probability of negative fuel in the tank rounded to 1 decimal place and specified as a percentage
+  "Probability of Negative Fuel in the Tank:", round(probability_negative_fuel_monte_carlo * 100, 1), "%\n"
+), cex = 1.2)
+
+#===============================================================================
+#### TASK 7 ####
+# Produce a plot of the estimated available flight time. Use this plot to address these questions:
+# A. What is the probability that you make an airport that is 100 minutes flight time away with at least 30 min reserve fuel required by regulations?
+# B. What is the probability that you run out of fuel trying to make it to the airport?
+#===============================================================================
+
+# Defining the required flight time (100 minutes)
+required_flight_time <- 100  
+
+# Defining the reserve fuel time (30 minutes)
+reserve_fuel_time <- 30
+
+# Converting the flight time requirement into a fuel requirement
+required_fuel <- (required_flight_time / 60) * airplane_fuel_consumption_rate
+reserve_fuel <- (reserve_fuel_time / 60) * airplane_fuel_consumption_rate
+
+# Calculating the total fuel required to reach the destination (accounting for the reserve fuel)
+total_required_fuel <- required_fuel + reserve_fuel
+#_______________________________________________________________________________
+
+# Defining a range of fuel levels
+# Note: by = 0.01 specifies the increment or step size
+fuel_levels <- seq(0, total_fuel_tank_capacity, by = 0.01)
+
+# Calculating the probability density function (PDF) for the fuel levels based on the fuel sensor readings
+fuel_pdf <- dnorm(fuel_levels, mean = fuel_sensor_reading, sd = fuel_sensor_standard_deviation)
+
+# Normalizing the PDF to ensure that it sums to a value of 1
+fuel_pdf <- fuel_pdf / sum(fuel_pdf)  
+
+# Calculating the available flight times corresponding to each fuel level
+available_flight_times <- (fuel_levels / airplane_fuel_consumption_rate) * 60
+
+# Calculating the cumulative distribution function (CDF) using the cumsum function
+fuel_cdf <- cumsum(fuel_pdf)
+#_______________________________________________________________________________
+
+# Calculating the probability of meeting the flight requirement (including the reserve fuel)
+probability_meeting_requirement <- sum(fuel_pdf[available_flight_times >= (required_flight_time + reserve_fuel_time)])
+
+# Calculating the probability of running out of fuel before making it to the airport
+probability_running_out_of_fuel <- sum(fuel_pdf[available_flight_times < required_flight_time])
+
+#_______________________________________________________________________________
+#### PLOTTING THE ESTIMATED AVAILABLE FLIGHT TIME ####
+
+# Plotting the probability density function of available flight time
+# Note: lwd specifies the line width; lty = 1 specifies the line type as solid
+plot(available_flight_times, fuel_pdf, type = "l", col = "darkgray", lwd = 4, lty = 1,
+     
+     # Specifying the title/header of the plot
+     main = "TASK 7: PDF over Estimated Available Flight Time",
+     
+     # Specifying the x-axis label for the plot
+     xlab = "Available Flight Time (Minutes)",
+     
+     # Specifying the y-axis label for the plot
+     ylab = "Probability Density")
+
+# Adding a vertical line to the plot to denote the required flight time (100 min)
+abline(v = required_flight_time, col = "red", lwd = 3, lty = 2)
+
+# Adding a vertical line to the plot to denote the total required flight time including reserve (100 min + 30 min reserve)
+abline(v = (required_flight_time + reserve_fuel_time), col = "blue", lwd = 3, lty = 2)
+
+# Adding a legend to the plot to label the key features on the plot
+legend("topright", legend = c("PDF of Available Flight Time", "100 Min Flight Time", "100 Min + 30 Min Reserve"),
+       col = c("darkgray", "red", "blue"), lwd = c(4, 3, 3), lty = c(1, 2, 2),
+       bty = "o", box.col = "black", inset = 0.02)
+
+#_______________________________________________________________________________
+#### PLOTTING THE CDF OF AVAILABLE FLIGHT TIME ####
+
+# Plotting the cumulative distribution function (CDF) (y-axis) over the available flight time (x-axis)
+# Note: lwd specifies the line width; lty = 1 specifies the line type as solid
+plot(available_flight_times, fuel_cdf, type = "l", col = "darkgray", lwd = 4, lty = 1,
+     
+     # Specifying the title/header of the plot
+     main = "TASK 7: CDF over Estimated Available Flight Time",
+     
+     # Specifying the x-axis label
+     xlab = "Available Flight Time (Minutes)",
+     
+     # Specifying the y-axis label
+     ylab = "Cumulative Probability")
+
+# Adding a vertical line to the plot to denote the required flight time (100 min)
+abline(v = required_flight_time, col = "red", lwd = 3, lty = 2)
+
+# Adding a vertical line to the plot to denote the total required flight time including reserve (100 min + 30 min reserve)
+abline(v = (required_flight_time + reserve_fuel_time), col = "blue", lwd = 3, lty = 2)
+
+# Adding a legend to label the key features of the plot
+legend("bottomright", legend = c("CDF of Available Flight Time", "100 Min Flight Time", "100 Min + 30 Min Reserve"),
+       col = c("darkgray", "red", "blue"), lwd = c(4, 3, 3), lty = c(1, 2, 2),
+       bty = "o", box.col = "black", inset = 0.02)
+#_______________________________________________________________________________
+##### PLOTTING THE SURVIVAL FUNCTION OVER AVAILABLE FLIGHT TIME #### 
+
+# Calculating the survival function
+# Note: that the survival function = 1 - CDF
+survival_function <- 1 - fuel_cdf
+
+# Plotting the survival function with a logarithmic y-axis over the available flight time (x-axis)
+# Note: lwd specifies the line width, lty = 1 specifies the line type as solid
+plot(available_flight_times, survival_function, type = "l", col = "darkgray", lwd = 4, lty = 1,
+     
+     # Specifying the title/header for the plot
+     main = "TASK 7: Survival Function over Estimated Available Flight Time",
+     
+     # Specifying the x-axis label
+     xlab = "Available Flight Time (Minutes)",
+     
+     # Specifying the y-axis label
+     ylab = "Survival Probability",
+     
+     # Setting the y-axis to a logarithmic (log) scale
+     log = "y")
+
+# Adding a vertical line to the plot to denote the required flight time (100 min)
+abline(v = required_flight_time, col = "red", lwd = 3, lty = 2)
+
+# Adding a vertical line to the plot to denote the total required flight time including reserve (100 min + 30 min reserve)
+abline(v = (required_flight_time + reserve_fuel_time), col = "blue", lwd = 3, lty = 2)
+
+# Adding a legend to label the key features of the plot
+legend("topright", legend = c("Survival Function", "100 Min Flight Time", "100 Min + 30 Min Reserve"),
+       col = c("darkgray", "red", "blue"), lwd = c(4, 3, 3), lty = c(1, 2, 2),
+       bty = "o", box.col = "black", inset = 0.02)
+#_______________________________________________________________________________
+
+# Opening a new plot to print the estimates calculated above on the last (eighth) page of the PDF file
+plot.new()
+
+# Adding a title at the top of the last page of the PDF file
+title(main = "TASK 7: Probabilities from the Plot of Estimated Available Flight Time", font.main = 2, cex.main = 1.2)
+
+# Probability of making it to the airport with reserve fuel
+text(0.4, 0.8, paste(
+  
+  # Probability of making it to the airport with reserve fuel rounded to 1 decimal place and specified as a percentage
+  "Probability of making it to the airport with reserve fuel: ", round(probability_meeting_requirement * 100, 1), "%\n",
+
+  # Probability of running out of fuel before reaching the airport rounded to 1 decimal place and specified as a percentage
+  "Probability of running out of fuel before reaching the airport: ", round(probability_running_out_of_fuel * 100, 1), "%\n"
+), cex = 1.0)
+#===============================================================================
+# Closing the PDF file
+dev.off()
+
+
+
