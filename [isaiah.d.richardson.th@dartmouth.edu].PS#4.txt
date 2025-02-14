@@ -1,0 +1,1183 @@
+# Course: ENGS 107: Bayesian Statistical Modeling and Computation
+# Problem Set 4: Markov Chain Monte Carlo
+# Professor: Dr. Klaus Keller PhD
+# Due Date: Friday, February 14, 2025 at 11:59 pm
+# File name: [isaiah.d.richardson.th@dartmouth.edu].PS#4.R
+# Software: R and RStudio
+#_______________________________________________________________________________
+# Author: Isaiah D. Richardson, M.S. (IDR)
+# Copyright: copyright by the author
+# License: this code is distributed under the GNU GENERAL PUBLIC LICENSE v3.0
+# License: for more information regarding GNU GENERAL PUBLIC LICENSE Version 3 visit: https://www.gnu.org/licenses/why-not-lgpl.html
+# There is no warranty on this R code script for ENGS 107 Question 4A
+#_______________________________________________________________________________
+# Version 1: last changes made on: February 13, 2025
+#_______________________________________________________________________________
+# Sources:
+# - Personal correspondence with Dr. Klaus Keller during in-person office hours to discuss expectations for each task, the plot of variance of the mode across iterations for task A, and confirmation of the correct positive control for task B (02/07/2025; 02/10/2025)
+# - Personal correspondence with TA Siddhi Gothivrekar during office hours in-person to conceptually discuss the assignment expectations and to review the printed results and figures for each of the tasks (02/11/2025) 
+# - R help files accessed through R-studio for syntax
+# - The coin-example.R from Canvas for general formatting of the code script and layout of the header notes
+# - Short, T. (2004). R Reference Card. For understanding how to use functions and commands in R including: seq, rep, dnorm, rnorm, pnorm, function, do.call, numeric, as.numeric, list, apply, lapply, sapply, round, c, table, xaxt, xlim, ylim, segments, abline, bty, lty, lwd, ifelse, max, text, plot, cex, $, font.main, cex.main  
+# - Applegate, P.J., Keller, K. et al.(2016). Risk Analysis in the Earth Sciences: A Lab Manual with Exercises in R. For understanding the RStudio interface and basic functions in R
+# - Grolemund, G. Hands-On Programming with R. To gain a better understanding of the RStudio interface and basic functions in R
+# - Venables, W.N., Smith, D.M. & the R Core Team. (2024). An Introduction to R Notes on R: A Programming Environment for Data Analysis and Graphics Version 4.4.2 for understanding functions, commands, and the basics of how to plot results
+# - Rizzo, M.L. (2019). Statistical Computing with R (2nd edition). For understanding syntax, functions, and how to perform a Bayes Monte Carlo simulation
+# - Robert, C. P., & Casella, G. (2004). Monte Carlo Statistical Methods (2nd ed.). Springer. For understanding how to set up a Bayes Monte Carlo simulation and to understand the basics of a Markov Chain Monte Carlo method
+# - Wickham, H. (2019). Advanced R (2nd ed.). CRC Press. For understanding basic functions in R and how to perform a Monte Carlo simulation in R
+# - Ross, S.M. (2006). Simulation (4th ed). Academic Press. For understanding the basics of convergence and stopping criteria for a Bayes Monte Carlo simulation
+# - Douglas, A., Roos, D., Mancini, F., Couto, A. & Lusseau, D. (2024). An Introduction to R. For understanding how to produce plots in R using the base R plot commands
+# - Chang, W. (2013). R Graphics Cookbook: Practical Recipes for Visualizing Data. O’Reilly Media. For understanding the syntax, functions, formatting, and basics for producing plots and visualizing data in R
+# - Murrell, P. (2005). R Graphics. Chapman & Hall/CRC. For understanding the basics of how to plot results visually and textually in R.
+# - Robert, C.P. (2007). The Bayesian Choice: From Decision-Theoretic Foundations to Computational Implementation (2nd.). Springer. To deepen my conceptual understanding of the likelihood function and prior for determining a Bayesian update
+# - “R Graphics Lectures.” (No Date). Retrieved from https://www.stat.auckland.ac.nz/~ihaka/787/lectures-r-graphics.pdf. To understand the basics of producing plots in R using base R plotting
+# - Gelman, A., Carlin, J.B., Stern, H.S., Dunson, D.B., Vehtari, A. & Rubin, D.B. (2013). Bayesian Data Analysis (3rd ed.). CRC Press. To conceptually understand the basics of the Metropolis Hasting algorithm and a Markov Chain Monte Carlo method
+# - Navarro, D. (2023). The Metropolis-Hastings algorithm. Retrieved from https://blog.djnavarro.net/posts/2023-04-12_metropolis-hastings/. To gain a basic conceptual understanding of the purpose of the Metropolis Hasting algorithm
+# - Wood, K. (2023). Metropolis-Hastings Algorithm. Retrieved from https://rpubs.com/ROARMarketingConcepts/1063733.To understand the basics of how to implement a Metropolis Hasting algorithm in R
+# - Graffelman, J. (No Date). Nice placement of labels in a plot. Retrieved from https://search.r-project.org/CRAN/refmans/calibrate/html/textxy.html. To understand the basics of positioning text and labels within a plot in R
+# - Brooks, S., Gelman, A., Jones, G.L. & Meng, X.L. (2011). Handbook of Markov Chain Monte Carlo. Chapman & Hall/CRC. To further my conceptual understanding of Markov Chain Monte Carlo, the Metropolis Hasting algorithm, to understand the purpose of the burn-in period
+# - Signorell, A. (2021). Tables in R – A quick practical overview. Retrieved from https://cran.r-project.org/web/packages/DescTools/vignettes/TablesInR.pdf. For understanding how to produce a basic table in R to visualize data
+# - Roy, V. (2019). Convergence diagnostics for Markov chain Monte Carlo. Annual Review of Statistics and its Application 7, 387-412. For understanding basic convergence criteria to consider for performing a Markov Chain Monte Carlo, also to better understanding burn-in and convergence checking
+#_______________________________________________________________________________
+# Collaborators:
+# - I did not work with any collaborators on problem set #4
+#_______________________________________________________________________________
+# To run this code script file:
+# 1. Open the ascii file in R
+# 2. Use the cursor to highlight the entire code script
+# 3. Press either 'Source', 'Ctrl + Enter', or 'run' to run the entire code script
+# 4. Open the resulting PDF file to analyze the results and figures
+#===============================================================================
+#### THE PROBLEM ####
+# Revisit the estimation problem about the fuel level (just this part) from the previous problem set
+# using an implementation of the Metropolis Hasting algorithm. To this end, please:
+# a. assess whether your numerical inference about the mode converges
+# b. define and use a positive control to assess the accuracy of your implemented method for the inference in part a
+# c. compare the required number of runs needed for converged inferences in part b from the Metropolis Hasting algorithm with the Bayes Monte Carlo algorithm
+#===============================================================================
+#### IMPLEMENTING THE METROPOLIS-HASTING ALGORITHM TO DETERMINE THE BAYESIAN UPDATE FROM THE LIKELIHOOD FUNCTION AND PROPER PRIOR ####
+#===============================================================================
+#### THE INPUTS ####
+
+# Specifying the total fuel tank capacity (182 liters)
+total_fuel_tank_capacity <- 182
+
+# Specifying the fuel sensor reading (34 liters)
+fuel_sensor_reading <- 34
+
+# Specifying the digital fuel sensor standard deviation (20 liters)
+fuel_sensor_standard_deviation <- 20
+#_______________________________________________________________________________
+
+# Setting three fixed seeds to facilitate controlled randomness and reproducibility of the results
+seeds <- c(3, 5, 9)
+#_______________________________________________________________________________
+
+# Creating a PDF file to plot the results and print the calculated estimates
+pdf("ENGS_107_Problem_Set_4_Results.pdf", width = 8, height = 6)
+#_______________________________________________________________________________
+
+# Defining the colors to plot the likelihood function for each of the three seeds
+seed_colors <- c("darkblue", "blue", "lightblue")
+
+# Defining the line widths for the likelihood function for each of the three seeds to enhance readability
+seed_line_widths <- c(4, 2, 1)
+#_______________________________________________________________________________
+
+# Initializing a list to store the estimates
+estimates <- list()
+
+# Initializing a list to store the calculated values for plotting of the likelihood function
+plot_data <- list()
+#_______________________________________________________________________________
+
+# Using a for loop to perform the calculations for each of the three seeds
+for (i in seq_along(seeds)) {
+  set.seed(seeds[i])
+  
+  # Defining a broad range of fuel levels in the airplane tank
+  # Setting the step length (or increment size) as 0.001 using by = 0.001
+  usable_fuel_in_tank <- seq(-60, total_fuel_tank_capacity, by = 0.001)
+  
+  # Using the dnorm function to calculate the probability density function (PDF) for the fuel level
+  pdf_usable_fuel <- dnorm(usable_fuel_in_tank, mean = fuel_sensor_reading, sd = fuel_sensor_standard_deviation)
+#_______________________________________________________________________________
+  
+  # Calculating the expected value of available fuel from the likelihood function
+  expected_value_available_fuel <- sum(usable_fuel_in_tank * pdf_usable_fuel) / sum(pdf_usable_fuel)
+  
+  # Calculating the most likely value of available fuel from the likelihood function
+  most_likely_value_available_fuel <- usable_fuel_in_tank[which.max(pdf_usable_fuel)]
+  
+  # Using the pnorm function to calculate the probability of negative fuel in the airplane tank
+  probability_negative_fuel_in_tank <- pnorm(0, mean = fuel_sensor_reading, sd = fuel_sensor_standard_deviation)
+#_______________________________________________________________________________
+  
+  # Storing the estimates
+  estimates[[i]] <- c(seeds[i], expected_value_available_fuel, most_likely_value_available_fuel, probability_negative_fuel_in_tank)
+  
+  # Storing the plotting data for the likelihood function
+  plot_data[[i]] <- list(x = usable_fuel_in_tank, y = pdf_usable_fuel, expected = expected_value_available_fuel, most_likely = most_likely_value_available_fuel)
+}
+#_______________________________________________________________________________
+#### PLOTTING THE PDF FOR USABLE FUEL IN THE TANK (THE LIKELIHOOD FUNCTION) ####
+
+# Plotting the PDF for usable fuel in the airplane tank (the likelihood function) for each of the three seeds
+# Specifying the ranges for the x-axis and y-axis to ensure that the entire likelihood function is visible on the plot
+plot(NULL, xlim = c(-60, 200), ylim = c(0, 0.025), type = "n",
+     
+     # Specifying the title/header for the plot
+     main = "PDF for Usable Fuel for All Seeds (Likelihood Function)",
+     
+     # Specifying the x-axis label
+     xlab = "Fuel (Liters)",
+     
+     # Specifying the y-axis label
+     ylab = "Probability Density",
+     
+     # Removing the default x-axis labels
+     xaxt = "n")
+
+# Adding custom labels to the x-axis to enhance the readability of the plot
+# Specifying the bounds and labeled increments on the x-axis
+axis(1, at = seq(-60, 200, by = 20), labels = seq(-60, 200, by = 20))
+
+# Using a for loop to add the likelihood function for each of the seeds to the plot
+for (i in seq_along(seeds)) {
+  lines(plot_data[[i]]$x, plot_data[[i]]$y, col = seed_colors[i], lwd = seed_line_widths[i])
+}
+
+# Adding a vertical dashed line to denote the expected value of available fuel
+abline(v = plot_data[[i]]$expected, col = "red", lwd = 3, lty = 2)
+
+# Adding a vertical dashed line to denote the most likely value of available fuel
+abline(v = plot_data[[i]]$most_likely, col = "darkorange", lwd = 3, lty = 3)
+
+# Adding a set of vertical dashed lines to denote the standard deviation of the digital fuel sensor
+abline(v = c(fuel_sensor_reading - 20, fuel_sensor_reading + 20), col = "darkgray", lwd = 3, lty = 3)
+
+# Adding text to label the +1 and -1 standard deviations of the digital fuel sensor
+text(fuel_sensor_reading - 20, max(plot_data[[i]]$y) * 0.7, "-1 SD", pos = 2, col = "darkgray")
+text(fuel_sensor_reading + 20, max(plot_data[[i]]$y) * 0.7, "+1 SD", pos = 4, col = "darkgray")
+
+# Adding a legend to label the key elements on the plot of the likelihood function
+legend("topright", legend = c("Likelihood Function (Seed 3)", "Likelihood Function (Seed 5)", "Likelihood Function (Seed 9)", "Expected Value (Mean)", "Most Likely Value (Mode)", "Fuel Error SD"),
+       col = c("darkblue", "blue", "lightblue", "red", "darkorange", "darkgray"), lwd = c(4, 4, 4, 3, 3, 3), lty = c(1, 1, 1, 2, 3, 3), bty = "o", inset = 0.02)
+
+#_______________________________________________________________________________
+#### PRINTING THE ESTIMATES FROM THE LIKELIHOOD FUNCTION ON A NEW PAGE IN THE PDF FILE ####
+
+# Opening a new plot to print the calculated estimates from the likelihood function for each of the three seeds
+plot.new()
+
+# Specifying a title for the second page of the PDF file detailing the printed estimates for each of the three seeds
+title(main = "Estimates from PDF of Usable Fuel for All Seeds (Likelihood Function)", 
+      font.main = 2, cex.main = 1.0)
+
+# Using function to add bold and underlined headers to the page
+bold_underline <- function(text) {
+  bquote(underline(bold(.(text))))
+}
+
+# Specifying the Y-coordinate for text positioning
+y_pos <- 0.85
+
+# Specifying the spacing to ensure that all printed text is spaced properly on the page
+y_step <- 0.06  
+
+# Specifying the list of seed values
+seed_numbers <- c(3, 5, 9)
+
+# Using a for loop to print the results for each of three seeds
+for (i in seq_along(seed_numbers)) {
+  
+  # Specifying a header for each seed value
+  text(0.05, y_pos, bold_underline(paste("Seed", seed_numbers[i])), cex = 1.0, adj = 0)
+  y_pos <- y_pos - y_step
+  
+  # Printing the expected value of available fuel (the mean) for each seed value
+  text(0.05, y_pos, paste("Expected Value of Available Fuel (Mean):", round(estimates[[i]][2], 2), "liters"), adj = 0)
+  y_pos <- y_pos - y_step
+  
+  # Printing the most likely value of available fuel (the mode) for each seed value
+  text(0.05, y_pos, paste("Most Likely Value of Available Fuel (Mode):", round(estimates[[i]][3], 2), "liters"), adj = 0)
+  y_pos <- y_pos - y_step
+  
+  # Printing the probability of negative fuel in the airplane tank for each seed value
+  text(0.05, y_pos, paste("Probability of Negative Fuel in the Tank:", round(estimates[[i]][4] * 100, 1), "%"), adj = 0)
+  
+  # Specifying the spacing between the results for each of the three seeds
+  y_pos <- y_pos - y_step - 0.04  
+}
+#===============================================================================
+#### DEFINING THE PROPER PRIOR ####
+
+# Creating a variable to specify the minimum realistic fuel capacity in the airplane tank as 0 liters of fuel
+minimum_fuel_tank_capacity <- 0
+
+# Determining the height of the uniform prior distribution that constrains the airplane fuel level between 0 liters and 182 liters
+# Note: The total probability must integrate to 1, thus the height must be set accordingly
+# Note: The uniform prior assumes that all fuel levels are equally likely within the realistic range of 0 - 182 liters
+prior_height <- 1 / (total_fuel_tank_capacity - minimum_fuel_tank_capacity)
+
+# Defining the prior probability distribution over the entire range of usable fuel in the tank
+# Note: This distribution assigns a constant probability density within the realistic fuel range and a probability of zero to values outside of the range
+prior <- ifelse(usable_fuel_in_tank >= minimum_fuel_tank_capacity & usable_fuel_in_tank <= total_fuel_tank_capacity, prior_height, 0)
+
+# Creating a sequence of fuel values for plotting the prior
+fuel_range <- seq(minimum_fuel_tank_capacity, total_fuel_tank_capacity, length.out = 100)
+
+# Calculating the prior probability values corresponding to each fuel level
+# Note: There is a constant prior probability for all valid fuel levels
+prior_values <- rep(prior_height, length(fuel_range))
+#_______________________________________________________________________________
+#### PLOTTING THE PROPER PRIOR WITH THE LIKELIHOOD FUNCTION ####
+
+# Plotting the likelihood function for each of the seeds with the prior
+# Note: specifying the range of values for the x-axis and y-axis
+plot(NULL, xlim = c(-60, 200), ylim = c(0, 0.025), type = "n",
+     
+     # Specifying the title/header for the plot
+     main = "Plot of the Likelihood Function with the Proper Prior Across Seeds",
+     
+     # Specifying the x-axis label
+     xlab = "Fuel (Liters)",
+     
+     # Specifying the y-axis label
+     ylab = "Probability Density",
+     
+     # Removing the default x-axis labels
+     xaxt = "n")
+
+# Adding custom labels and label increments to the x-axis to enhance readability of the plot
+# Note: Specifying the bounds and labeled increments on the x-axis
+axis(1, at = seq(-60, 200, by = 20), labels = seq(-60, 200, by = 20))
+
+# Using a for loop to add the likelihood function for each of the seeds to the plot
+for (i in seq_along(seeds)) {
+  lines(plot_data[[i]]$x, plot_data[[i]]$y, col = seed_colors[i], lwd = seed_line_widths[i])
+}
+
+# Adding a vertical dashed line to denote the expected value of available fuel
+abline(v = plot_data[[i]]$expected, col = "red", lwd = 3, lty = 2)
+
+# Adding a vertical dashed line to denote the most likely value of available fuel
+abline(v = plot_data[[i]]$most_likely, col = "darkorange", lwd = 3, lty = 3)
+
+# Adding a set of vertical dashed lines to denote the standard deviation of the digital fuel sensor
+abline(v = c(fuel_sensor_reading - 20, fuel_sensor_reading + 20), col = "darkgray", lwd = 3, lty = 3)
+
+# Adding text to label the +1 and -1 standard deviations of the digital fuel sensor
+text(fuel_sensor_reading - 20, max(plot_data[[i]]$y) * 0.7, "-1 SD", pos = 2, col = "darkgray")
+text(fuel_sensor_reading + 20, max(plot_data[[i]]$y) * 0.7, "+1 SD", pos = 4, col = "darkgray")
+
+# Adding vertical dashed lines to denote the bounds for the proper prior
+segments(x0 = minimum_fuel_tank_capacity, y0 = 0, x1 = minimum_fuel_tank_capacity, y1 = prior_height, col = "black", lwd = 3, lty = 2)
+segments(x0 = total_fuel_tank_capacity, y0 = 0, x1 = total_fuel_tank_capacity, y1 = prior_height, col = "black", lwd = 3, lty = 2)
+
+# Adding a horizontal dashed line for the proper prior between 0 liters and 182 liters to create a rectangle
+segments(x0 = minimum_fuel_tank_capacity, y0 = prior_height, x1 = total_fuel_tank_capacity, y1 = prior_height, col = "black", lwd = 3, lty = 2)
+
+# Adding a legend to label the key elements on the plot of the likelihood function and the proper prior
+legend("topright", legend = c("Likelihood Function (Seed 3)", "Likelihood Function (Seed 5)", "Likelihood Function (Seed 9)", "Proper Prior", "Expected Value (Mean)", "Most Likely Value (Mode)", "Fuel Error SD"),
+       col = c("darkblue", "blue", "lightblue", "black", "red", "darkorange", "darkgray"), lwd = c(4, 4, 4, 3, 3, 3, 3), lty = c(1, 1, 1, 2, 3, 3, 3), bty = "o", inset = 0.02)
+
+#===============================================================================
+#### IMPLEMENTING THE METROPOLIS HASTING ALGORITHM TO DETERMINE THE BAYESIAN UPDATE FROM THE LIKELIHOOD FUNCTION AND THE PRIOR ####
+
+# Using function to calculate the likelihood of a given fuel level using a normal distribution
+# Note: The likelihood represents the probability of observing the given fuel level
+likelihood <- function(fuel_level) {
+  # Note: If the fuel level is negative, assign it a probability value of zero
+  if (fuel_level < 0) return(0)
+  
+  # Using the dnorm function to calculate the likelihood using the normal distribution
+  dnorm(fuel_level, mean = fuel_sensor_reading, sd = fuel_sensor_standard_deviation)
+}
+
+# Using function to define the prior probability (assumes a uniform distribution)
+# Note: The prior represents our initial belief about the fuel level before considering observations
+prior_prob <- function(fuel_level) {
+  if (fuel_level >= minimum_fuel_tank_capacity & fuel_level <= total_fuel_tank_capacity) {
+    
+    # Note: Assigning equal probability to all fuel levels within the capacity of the fuel tank
+    return(1 / (total_fuel_tank_capacity - minimum_fuel_tank_capacity))
+  } else {
+    # Assigning a probability value of zero to fuel levels outside the range specified by the prior (0 liters to 182 liters)
+    return(0)  
+  }
+}
+
+# Using function to calculate the un-normalized posterior probability from the prior and likelihood
+posterior_prob <- function(fuel_level) {
+  # Assigning a probability value of zero to fuel levels outside the range specified by the prior
+  if (fuel_level < 0) return(0)  
+  
+  # Calculating the posterior probability
+  # Note: posterior probability is proportional to the likelihood * prior (not normalized)
+  likelihood(fuel_level) * prior_prob(fuel_level)
+}
+
+# Using function to calculate the most likely value (mode) of the sample distribution
+compute_mode <- function(samples) {
+  
+  # Creating a frequency table (rounding the values to two decimal places for binning)
+  freq_table <- table(round(samples, 2))
+  
+  # Note: Returning the most frequent value (mode)
+  return(as.numeric(names(sort(freq_table, decreasing = TRUE)[1])))  
+}
+#_______________________________________________________________________________
+#### IMPLEMENTING THE METROPOLIS HASTING ALGORITHM TO DETERMINE THE BAYESIAN UPDATE FROM THE LIKELIHOOD FUNCTION AND THE PRIOR ####
+
+# Specifying the Metropolis-Hastings algorithm (a Markov Chain Monte Carlo [MCMC] method) 
+# Setting the mode tolerance as 0.5 L using the variable tolerance = 0.5. This is the threshold for allowed variation in the mode value
+# Note: max_iterations is the variable for the maximum number of iterations for the algorithm
+# Note: init is the initial value for the Markov Chain (starting point)
+# Note: proposal_sd is the standard deviation for the proposal distribution. This is setting the step or increment size
+# Note: check_interval = 1000 specifies to check for convergence every 1000 iterations
+# Note: stable_checks = 30 specifies that 30 consecutive stable checks (the mode under the tolerance) for convergence to be determined
+# Note: the burn_in_ratio = 0.30 specifies that the initial 30% of samples should be discarded
+metropolis_hastings <- function(max_iterations, init, proposal_sd, seed, tolerance = 0.5, check_interval = 1000, stable_checks = 30, burn_in_ratio = 0.30) {
+  
+  # Setting the seed (ensures reproducibility)
+  set.seed(seed)
+  
+  # Initializing a numeric vector variable for sample storage up to the max number of iterations
+  samples <- numeric(max_iterations)
+  
+  # Ensuring that the initial value is not a negative value
+  samples[1] <- max(init, 0)  
+ 
+  # Defining the burn-in period (opting to discard the first 30% of samples)
+  burn_in <- round(max_iterations * burn_in_ratio)
+  
+  # Using the mode_history variable to store mode values to track stability
+  mode_history <- numeric(stable_checks)
+  
+  # Initializing a counter to track consecutive stable checks for the mode
+  stable_count <- 0  
+#_______________________________________________________________________________
+  
+  # Using a for loop to run from 2 to maximum iterations (iterating over each step of the Markov chain)
+  for (i in 2:max_iterations) {
+    
+    # Using the rnorm function to propose a new candidate sample using a normal distribution centered at the previous sample
+    proposal <- rnorm(1, mean = samples[i - 1], sd = proposal_sd)
+    
+    # Using an if else statement to ensure that the proposed sample is not negative. If it is negative, it is rejected and the previous sample is retained
+    if (proposal < 0) {
+      samples[i] <- samples[i - 1]
+    } else {
+      # Calculating the acceptance ratio (Metropolis-Hastings criterion)
+      acceptance_ratio <- posterior_prob(proposal) / posterior_prob(samples[i - 1])
+      
+      # Using an if else statement to either accept or rejected the proposal
+      # Note: A uniform random number runif(1) is drawn from [0,1]. If it is smaller than the acceptance ratio then the proposal is accepted
+      if (runif(1) < acceptance_ratio) {
+        samples[i] <- proposal 
+      } else {
+        # Reject and retain the previous value
+        samples[i] <- samples[i - 1]  
+      }
+    }
+#_______________________________________________________________________________
+    
+    # Performing a convergence check after the burn-in period (first 30%)
+    # Note: This ensures that convergence checking starts after the burn-in period and is performed every 1000 iterations (as specified by check_interval)
+    if (i > burn_in && i %% check_interval == 0) {
+      
+      # Calculating the mode of the sampled distribution
+      current_mode <- compute_mode(samples[(burn_in + 1):i])
+      
+      # Updating the mode history by removing the oldest value and adding the newest value
+      mode_history <- c(mode_history[-1], current_mode)  
+      
+      # Using an if else statement to check if the mode remains stable over the recent set of iterations
+      # Note: If the mode remains constant or varies within the specified tolerance the stable_count is incremented by 1
+      if (length(unique(mode_history)) == 1 || all(abs(diff(mode_history)) < tolerance)) {
+        stable_count <- stable_count + 1
+      } else {
+        # Resetting the stable_count to 0 if instability is detected
+        stable_count <- 0
+      }
+      
+      # Using an if statement to stop/terminate early if the mode has stabilized for the required number of stable_checks (i.e., 30 stable checks)
+      if (stable_count >= stable_checks) {
+        cat("Converged at iteration:", i, "with mode:", round(current_mode, 3), "\n")
+        return(list(samples = samples[(burn_in + 1):i], convergence_iter = i))  # Return results
+      }
+    }
+  }
+  
+  # Returning the full sample set after burn-in if no early stopping occurred
+  return(list(samples = samples[(burn_in + 1):max_iterations], convergence_iter = max_iterations))
+}
+#_______________________________________________________________________________
+# Running the Metropolis-Hastings Algorithm for each seed
+
+# Specifying the maximum number of iterations for the Metropolis-Hasting algorithm (setting the upper bound to 1 million)
+# Note: The iterations will stop early if convergence is detected
+max_iterations <- 1000000
+
+# Defining an initial value based on fuel sensor reading of 34 liters
+# Note: This ensures that the initial value is not negative
+initial_guess <- max(fuel_sensor_reading, 0)
+
+# Defining the standard deviation of the proposal distribution as 10
+# Note: This controls the step size when proposing new values in the Metropolis-Hastings algorithm
+proposal_sd <- 10
+
+# Initializing a list to store the generated samples from the Metropolis-Hasting algorithm for each seed
+mh_samples <- list()
+
+# Initializing a list to store the number of iterations at which convergence was achieved for each seed
+convergence_info <- list()
+
+# Using a for loop to perform the Metropolis-Hasting algorithm for each of the three seeds
+for (seed in seeds) {
+  result <- metropolis_hastings(max_iterations, initial_guess, proposal_sd, seed)
+  # Storing the generated samples (this allows for tracking of the results from each of the seeds)
+  mh_samples[[as.character(seed)]] <- result$samples  
+  # Storing the iteration at which the Markov chain converged
+  convergence_info[[as.character(seed)]] <- result$convergence_iter
+}
+
+# Calculating the posterior densities using the lapply function
+posterior_densities <- lapply(mh_samples, function(samples) density(samples, from = 0))
+#_______________________________________________________________________________
+#### PLOTTING THE POSTERIORS FROM THE METROPOLIS-HASTING ALGORITHM WITH THE LIKELIHOOD AND PRIOR FOR EACH OF THE SEEDS ####
+
+# Plotting the posterior distribution from the Metropolis-Hasting algorithm for each seed with the prior and likelihood function
+# Note: Specifying the range for the x-axis and the y-axis
+plot(NULL, xlim = c(-60, 200), ylim = c(0, 0.025), type = "n",
+     
+     # Specifying the title/header for the plot
+     main = "Plot of Posteriors from the Metropolis-Hasting Algorithm for All Seeds",
+     
+     # Specifying the x-axis label
+     xlab = "Fuel (Liters)",
+     
+     # Specifying the y-axis label
+     ylab = "Probability Density",
+     
+     # Removing the default x-axis labels
+     xaxt = "n")
+
+# Adding custom labels to the x-axis to enhance readability of the plot
+# Note: Specifying the bounds and labeled increments for the x-axis
+axis(1, at = seq(-60, 200, by = 20))
+
+# Using a for loop to plot the likelihood function for each of the three seeds
+for (i in seq_along(seeds)) {
+  lines(plot_data[[i]]$x, plot_data[[i]]$y, col = seed_colors[i], lwd = seed_line_widths[i])
+}
+
+# Using a for loop to plot the posterior for each of the three seeds
+posterior_colors <- c("darkgreen", "green", "lightgreen")
+for (i in seq_along(seeds)) {
+  lines(posterior_densities[[as.character(seeds[i])]]$x, posterior_densities[[as.character(seeds[i])]]$y, 
+        col = posterior_colors[i], lwd = 4)
+}
+
+# Adding a vertical dashed line to denote the expected value of available fuel
+abline(v = plot_data[[i]]$expected, col = "red", lwd = 3, lty = 2)
+
+# Adding a vertical dashed line to denote the most likely value of available fuel
+abline(v = plot_data[[i]]$most_likely, col = "darkorange", lwd = 3, lty = 3)
+
+# Adding a set of vertical dashed lines to denote the standard deviation of the digital fuel sensor
+abline(v = c(fuel_sensor_reading - 20, fuel_sensor_reading + 20), col = "darkgray", lwd = 3, lty = 3)
+
+# Adding text to label the +1 and -1 standard deviations of the digital fuel sensor
+text(fuel_sensor_reading - 20, max(plot_data[[i]]$y) * 0.7, "-1 SD", pos = 2, col = "darkgray")
+text(fuel_sensor_reading + 20, max(plot_data[[i]]$y) * 0.7, "+1 SD", pos = 4, col = "darkgray")
+
+# Adding vertical dashed lines to denote the bounds for the proper prior
+segments(x0 = minimum_fuel_tank_capacity, y0 = 0, x1 = minimum_fuel_tank_capacity, y1 = prior_height, col = "black", lwd = 3, lty = 2)
+segments(x0 = total_fuel_tank_capacity, y0 = 0, x1 = total_fuel_tank_capacity, y1 = prior_height, col = "black", lwd = 3, lty = 2)
+
+# Adding a horizontal dashed line for the proper prior between 0 liters and 182 liters to create a rectangle
+segments(x0 = minimum_fuel_tank_capacity, y0 = prior_height, x1 = total_fuel_tank_capacity, y1 = prior_height, col = "black", lwd = 3, lty = 2)
+
+# Adding a legend to the plot to label the key elements including the likelihood function for each seed, the proper prior, the posterior for each seed, the expected value (mean), the most likely value (mode), and the fuel sensor standard deviation
+legend("topright", legend = c("Likelihood (Seed 3)", "Likelihood (Seed 5)", "Likelihood (Seed 9)", "Proper Prior", "Posterior (Seed 3)", "Posterior (Seed 5)", "Posterior (Seed 9)", "Expected Value (Mean)", "Most Likely Value (Mode)", "Fuel Error SD"),
+       col = c("darkblue", "blue", "lightblue", "black", "darkgreen", "green", "lightgreen", "red", "orange", "darkgray"), lwd = c(4, 4, 4, 2, 4, 4, 4, 3, 3, 3), lty = c(1, 1, 1, 2, 1, 1, 1, 3, 3, 3), cex = 0.8, inset = 0.02)
+#_______________________________________________________________________________
+#### PRINTING THE POSTERIOR ESTIMATES FROM THE METROPOLIS-HASTING ALGORITHM FOR EACH OF THE SEEDS ON A NEW PAGE IN THE PDF FILE ####
+
+# Opening a new plot in the PDF file to print the calculated estimates from the posterior distribution
+plot.new()
+
+# Specifying a title for this page of the PDF file
+title(main = "Posterior Estimates from the Metropolis-Hasting Algorithm for All Seeds", 
+      font.main = 2, cex.main = 1.2)  # Reduced font size for better fit
+
+# Calculating the posterior estimates for each of the three seeds
+# Note: This loops through mh_samples, applying the function to each sample set (one for each seed)
+posterior_estimates <- lapply(mh_samples, function(samples) {
+  
+  # Calculating the expected value of available fuel (the mean)
+  expected_value <- mean(samples)
+  
+  # Calculating the most likely value of available fuel (the mode)
+  most_likely_value <- compute_mode(samples)
+  
+  # Calculating the probability of negative fuel in the tank
+  prob_negative_fuel <- mean(samples < 0)  
+  
+  # Note: Storing the estimates for each seed as a dictionary inside the variable posterior_estimates
+  list(mean = expected_value, mode = most_likely_value, prob_negative_fuel = prob_negative_fuel)
+})
+
+# Making the headers for each seed in bold font and underlined
+bold_underline <- function(text) {
+  bquote(underline(bold(.(text))))
+}
+
+# Defining the Y-positioning variables for the printed text
+# Note: y_pos sets the starting position at the top of the page
+y_pos <- 0.90
+# Note: y_step specifies the vertical spacing between the lines of text
+y_step <- 0.06  
+
+# Using a for loop to loop through each of the three seeds and print the estimates
+for (i in seq_along(names(mh_samples))) {
+  
+  # Printing the header for each seed
+  text(0.05, y_pos, bold_underline(paste("Seed", names(mh_samples)[i])), cex = 1.0, adj = 0)
+  y_pos <- y_pos - y_step
+  
+  # Printing the expected value of available fuel (the mean)
+  text(0.05, y_pos, paste("Expected Value of Available Fuel (Mean):", round(posterior_estimates[[i]]$mean, 2), "liters"), adj = 0)
+  y_pos <- y_pos - y_step
+  
+  # Printing the most likely value of available fuel (the mode)
+  text(0.05, y_pos, paste("Most Likely Value of Available Fuel (Mode):", round(posterior_estimates[[i]]$mode, 2), "liters"), adj = 0)
+  y_pos <- y_pos - y_step
+  
+  # Printing the probability of negative fuel in the tank
+  text(0.05, y_pos, paste("Probability of Negative Fuel in the Tank:", round(posterior_estimates[[i]]$prob_negative_fuel * 100, 1), "%"), adj = 0)
+  y_pos <- y_pos - y_step - 0.04  
+}
+#===============================================================================
+#### PART A: ASSESSING WHETHER THE NUMERICAL INFERENCE ABOUT THE MODE CONVERGES ####
+#===============================================================================
+
+# Using the lapply function to track the evolution of the mode estimate across the iterations for each of the three seeds
+mode_tracking <- lapply(mh_samples, function(samples) {
+  
+  # Defining the track interval as 1000, meaning that the mode will be recorded every 1000 iterations
+  track_interval <- 1000  
+  # Defining the burn-in period (the first 30% of the samples)
+  burn_in <- round(length(samples) * 0.30) 
+  # Initializing a numeric vector to store the mode values over time
+  mode_values <- numeric()  
+  
+  # Using a for loop to iterate through the samples in increments of 1000 (set by the track_interval variable) after the burn-in period
+  for (i in seq(burn_in + track_interval, length(samples), by = track_interval)) {
+    # Calculating the mode at each interval
+    mode_values <- c(mode_values, compute_mode(samples[burn_in:i]))  
+  }
+  # Returning the mode values tracked across iterations
+  mode_values  
+})
+#_______________________________________________________________________________
+# Determining the minimum length of the mode tracking results across the seeds to align the data for analysis
+# Note: The purpose of this is to ensure consistency across the seeds because the different seeds may generate chains of different lengths
+min_length <- min(sapply(mode_tracking, length))
+
+# Trimming each mode tracking sequence to match the shortest one for consistency so that each of the chains is the same length 
+mode_tracking <- lapply(mode_tracking, function(modes) modes[1:min_length])
+
+# Re-stating the track_interval to ensure that the code script runs properly
+track_interval <- 1000
+
+# Creating a sequence of iteration numbers corresponding to the mode tracking points
+iterations <- seq(track_interval, track_interval * min_length, by = track_interval)
+
+# Combining the mode tracking data from the three different seeds into a matrix for analysis
+mode_matrix <- do.call(cbind, mode_tracking)
+
+# Calculating the variance of the mode across the three different seeds at each tracking point
+variance_tracking <- apply(mode_matrix, 1, var, na.rm = TRUE)
+#_______________________________________________________________________________
+### PLOTTING THE VARIANCE OF THE MODE ACROSS THE THREE SEEDS OVER THE NUMBER OF ITERATIONS ###
+
+# Plotting the variance of the mode across the three seeds over the number of iterations
+plot(iterations, variance_tracking, type = "l", col = "darkblue", lwd = 3,
+     
+     # Specifying the title/header of the plot
+     main = "Variance of Mode Across Seeds Over Iterations",
+     
+     # Specifying the x-axis label
+     xlab = "Number of Iterations",
+     
+     # Specifying the y-axis label
+     ylab = "Variance of Mode Across Seeds")
+
+# Adding a legend to label the key elements of the plot
+legend("topright", legend = "Variance of Mode Across Seeds", col = "darkblue", lwd = 3, inset = 0.02)
+#_______________________________________________________________________________
+#### PRINTING THE CONVERGENCE ASSESSMENT RESULTS FOR EACH SEED ON A NEW PAGE OF THE PDF FILE ####
+
+# Opening a new plot in the PDF file to print the mode, convergence iteration, and convergence status for each seed
+plot.new()
+
+# Specifying a title for this page in the PDF file assessing the mode convergence across all of the seeds
+title(main = "Assessment of Mode Convergence Across all Seeds", 
+      font.main = 2, cex.main = 1.2)
+
+# Calculating the posterior estimates for each of the three seeds
+posterior_estimates <- lapply(mh_samples, function(samples) {
+  
+  # Calculating the expected value of available fuel (the mean)
+  expected_value <- mean(samples)
+  
+  # Calculating the most likely value of available fuel (the mode)
+  most_likely_value <- compute_mode(samples)
+  
+  # Calculating the probability of negative fuel in the tank
+  prob_negative_fuel <- mean(samples < 0)  
+  
+  # Note: Storing the estimates for each seed as a dictionary inside the variable posterior_estimates
+  list(mean = expected_value, mode = most_likely_value, prob_negative_fuel = prob_negative_fuel)
+})
+
+# Calculating the final variance of the mode across the three seeds
+final_variance_mode <- variance_tracking[length(variance_tracking)]
+
+# Displaying the final variance of mode across seeds
+text(0.05, 0.95, paste("Final Variance of Mode Across Seeds:", round(final_variance_mode, 2)), 
+     font = 2, adj = 0)
+
+# Making the headers for each seed in bold font and underlined
+bold_underline <- function(text) {
+  bquote(underline(bold(.(text))))
+}
+
+# Defining the Y-positioning variables for the printed text
+# Note: y_pos sets the starting position at the top of the page
+y_pos <- 0.85
+# Note: y_step specifies the vertical spacing between the lines of text
+y_step <- 0.06  
+
+# Using a for loop to loop through each of the three seeds and print the values
+for (i in seq_along(names(mh_samples))) {
+  # Specifying a header for each seed
+  text(0.05, y_pos, bold_underline(paste("Seed", names(mh_samples)[i])), cex = 1.0, adj = 0)
+  y_pos <- y_pos - y_step
+  
+  # Specifying the most likely value (the mode) for each seed
+  text(0.05, y_pos, paste("Most Likely Value of Available Fuel (Mode):", round(posterior_estimates[[i]]$mode, 2), "liters"), adj = 0)
+  y_pos <- y_pos - y_step
+  
+  # Specifying the convergence iteration for each seed
+  text(0.05, y_pos, paste("Convergence Iteration:", convergence_info[[i]]), adj = 0)
+  y_pos <- y_pos - y_step
+  
+  # Specifying the convergence status for each seed
+  text(0.05, y_pos, paste("Convergence Status:", 
+                          ifelse(convergence_info[[i]] < max_iterations, "Converged Successfully", "Did Not Converge")), adj = 0)
+  y_pos <- y_pos - y_step - 0.04 
+}
+#===============================================================================
+#### PART B: DEFINING AND USING A POSITIVE CONTROL TO ASSESS THE ACCURACY OF IMPLEMENTED INFERENCE METHOD FROM PART A ####
+#===============================================================================
+#### ASSESSING ACCURACY OF THE IMPLEMENTED METHOD FOR INFERENCE USING A POSITIVE CONTROL ####
+
+# Defining the fuel sensor reading as the positive control (34 liters)
+positive_control <- 34
+
+# Defining an acceptable threshold for accuracy assessment (within ± 3 liters of fuel)
+accuracy_threshold <- 3
+
+# Initializing a list to store the accuracy assessment results for each of the three seeds
+accuracy_results <- list()
+#_______________________________________________________________________________
+# Using a for loop to calculate the accuracy for each of the three seeds
+for (seed in seeds) {
+  seed_str <- as.character(seed)
+  
+  # Retrieving the inferred mode from the Metropolis-Hastings algorithm
+  inferred_mode <- posterior_estimates[[seed_str]]$mode
+  
+  # Calculating the absolute deviation from the positive control (34 liters)
+  deviation <- abs(inferred_mode - positive_control)
+  
+  # Checking if the deviation is within the acceptable accuracy threshold of ± 3 liters of fuel
+  accurate <- deviation <= accuracy_threshold
+  
+  # Storing the accuracy results (the mode, the deviation, and the accuracy status)
+  accuracy_results[[seed_str]] <- list(
+    inferred_mode = inferred_mode,
+    deviation = deviation,
+    accurate = accurate
+  )
+}
+#_______________________________________________________________________________
+#### PRINTING THE ACCURACY ASSESSMENT RESULTS ON A BLANK PAGE IN THE PDF FILE ####
+
+# Opening a new blank page in the PDF file to print the accuracy assessment results
+plot.new()
+
+# Adding a title at the top of the PDF page for the accuracy assessments
+title(main = "Accuracy Assessment of Inference Method Using Positive Control", 
+      font.main = 2, cex.main = 1.2)
+
+# Making the headers for each seed in bold font and underlined
+bold_underline <- function(text) {
+  bquote(underline(bold(.(text))))
+}
+
+# Defining the Y-positioning variables for the printed text
+# Note: y_pos sets the starting position at the top of the page
+y_pos <- 0.85
+# Note: y_step specifies the vertical spacing between the lines of text
+y_step <- 0.06
+
+# Using a for loop to loop through each of the three seeds and print the values 
+for (seed in seeds) {
+  seed_str <- as.character(seed)
+  
+  # Specifying a header for each seed
+  text(0.05, y_pos, bold_underline(paste("Seed", seed)), cex = 1.0, adj = 0)
+  y_pos <- y_pos - y_step
+  
+  # Specifying the estimated mode for each seed
+  text(0.05, y_pos, paste("Estimated Mode:", round(accuracy_results[[seed_str]]$inferred_mode, 2), "liters"), adj = 0)
+  y_pos <- y_pos - y_step
+  
+  # Specifying the deviation from the positive control value of 34 liters
+  text(0.05, y_pos, paste("Deviation from Positive Control (34 L):", round(accuracy_results[[seed_str]]$deviation, 2), "liters"), adj = 0)
+  y_pos <- y_pos - y_step
+  
+  # Specifying the accuracy status
+  text(0.05, y_pos, paste("Accuracy Status:", 
+                          ifelse(accuracy_results[[seed_str]]$accurate, "Accurate", "Inaccurate")), adj = 0)
+  y_pos <- y_pos - y_step - 0.04 
+}
+
+#_______________________________________________________________________________
+#### PLOTTING THE ACCURACY ASSESSMENT RESULTS ####
+
+# Defining a y-axis range for the accuracy assessment plot
+y_ticks <- seq(0, 10, by = 2)
+
+# Using a bar plot to plot the deviations from the positive control (34 liters) for each of the three seeds
+barplot(
+  sapply(accuracy_results, function(x) x$deviation),names.arg = paste("Seed", seeds), col = ifelse(sapply(accuracy_results, function(x) x$accurate), "green", "red"),border = "black",
+  
+  # Specifying the title/header for the plot
+  main = "Deviation of Estimated Modes from Positive Control (34 Liters)",
+  
+  # Specifying the y-axis label
+  ylab = "Deviation (Liters)",
+  
+  # Specifying the y-axis range
+  ylim = c(0, max(y_ticks)),
+  
+  # Specifying that the labels are horizontally oriented
+  las = 1
+)
+
+# Adding black, dashed reference line at the accuracy threshold of +/- 3 liters of fuel
+abline(h = accuracy_threshold, col = "black", lwd = 3, lty = 2)
+
+
+# Adding a legend to label the key elements of the plot
+# Note: pch = 22 indicates a square marker with a border; pt.bg specifies the fill colors; lty specifies the line type and lwd specifies the line width
+legend("topright", legend = c("Accurate (≤ 3L SD)", "Inaccurate (> 3L SD)", "Accuracy Threshold"), col = c("black", "black", "black"), pch = c(22, 22, NA), pt.bg = c("green", "red", NA), lty = c(NA, NA, 2), lwd = c(NA, NA, 3), bty = "o", inset = 0.02)
+#_______________________________________________________________________________
+#### PLOTTING THE POSITIVE CONTROL AS GAUSSIAN WITH THE POSTERIORS FROM THE METROPOLIS-HASTING ALGORITHM ####
+
+# Creating a sequence of fuel values for the positive control (assuming a Gaussian distribution)
+# Note: by = 0.1 specifies the step size (or increment size)
+positive_control_x <- seq(-60, 200, by = 0.1)
+
+# Calculating the probability density function (PDF) for the positive control
+positive_control_pdf <- dnorm(positive_control_x, mean = positive_control, sd = 3)
+
+# Scaling the positive control PDF to match the scale of posteriors
+scaling_factor <- max(sapply(posterior_densities, function(d) max(d$y))) / max(positive_control_pdf)
+positive_control_pdf <- positive_control_pdf * scaling_factor
+#_______________________________________________________________________________
+
+# Plotting the positive control with the posteriors from the Metropolis-Hasting algorithm
+plot(NULL, xlim = c(-60, 200), ylim = c(0, max(sapply(posterior_densities, function(d) max(d$y)) * 1.1)), 
+     type = "n",
+     
+     # Specifying the title/header for the plot
+     main = "Plot of the Positive Control with the Metropolis-Hasting Posteriors",
+     
+     # Specifying the x-axis label
+     xlab = "Fuel (Liters)",
+     
+     # Specifying the y-axis label
+     ylab = "Probability Density",
+     
+     # Removing the default x-axis labels
+     xaxt = "n")
+
+# Adding custom labels to the x-axis and specifying the label increment
+axis(1, at = seq(-60, 200, by = 20), labels = seq(-60, 200, by = 20))
+
+# Plotting the positive control (Gaussian distribution)
+lines(positive_control_x, positive_control_pdf, col = "black", lwd = 3, lty = 1)
+
+# Using a for loop to plot the posterior distributions for each seed from the Metropolis-Hasting algorithm
+posterior_colors <- c("darkgreen", "green", "lightgreen")
+for (i in seq_along(seeds)) {
+  lines(posterior_densities[[as.character(seeds[i])]]$x, posterior_densities[[as.character(seeds[i])]]$y, 
+        col = posterior_colors[i], lwd = 4)
+}
+
+# Adding vertical dashed lines at the estimated modes from the posteriors from the Metropolis-Hasting algorithm
+for (i in seq_along(seeds)) {
+  inferred_mode <- posterior_estimates[[as.character(seeds[i])]]$mode
+  abline(v = inferred_mode, col = posterior_colors[i], lwd = 3, lty = 2)
+}
+
+# Adding a legend to label the key elements of the plot
+legend("topright", 
+       legend = c("Positive Control", "Posterior (Seed 3)", "Posterior (Seed 5)", "Posterior (Seed 9)", "Mode (Seed 3)", "Mode (Seed 5)", "Mode (Seed 9)"), 
+       col = c("black", "darkgreen", "green", "lightgreen", "darkgreen", "green", "lightgreen"), lwd = c(3, 4, 4, 4, 3, 3, 3), lty = c(2, 1, 1, 1, 2, 2, 2), bty = "o", inset = 0.02)
+#===============================================================================
+#### PART C: COMPARING THE REQUIRED NUMBER OF RUNS NEEDED FOR CONVERGED INFERENCES FROM THE METROPOLIS-HASTING ALGORITHM WITH THE BAYES MONTE CARLO ALGORITHM ####
+#===============================================================================
+#### USING A BAYES MONTE CARLO METHOD TO DETERMINE THE BAYESIAN UPDATE FROM THE LIKELIHOOD FUNCTION AND PRIOR FOR EACH OF THE THREE SEEDS ####
+
+# Using function to perform the Bayesian inference using a Monte Carlo method
+# Note: Maximum iterations is set to 1 million (see below) (this is the same value as in the Metropolis-Hasting algorithm)
+# Note: Setting the mode tolerance to 0.5 (the same value as in the Metropolis-Hasting algorithm)
+# Note: Setting the check interval to 1000 (the same value as in the Metropolis-Hasting algorithm)
+# Note: Setting the stable checks to 30 (the same value as in the Metropolis-Hasting algorithm)
+bayes_monte_carlo <- function(max_iterations, seed, tolerance = 0.5, check_interval = 1000, stable_checks = 30) {
+   # Setting the seed (using three different fixed seeds)
+   set.seed(seed)  
+  
+  # Generating prior samples
+  # Note: This draws up to 1 million random samples from the uniform prior distribution within the fuel tank capacity range (0 liters to 182 liters)
+  samples <- runif(max_iterations, minimum_fuel_tank_capacity, total_fuel_tank_capacity)
+  
+  # Calculating the posterior probability for each sample
+  weights <- sapply(samples, function(x) posterior_prob(x) * prior_prob(x))
+  
+  # Normalizing the weights so they sum to 1
+  # Note: This ensures valid probability weights
+  weights <- weights / sum(weights)
+  
+  # Performing importance sampling with replacement based on the posterior weights
+  # Note: replace = TRUE specifies sampling with replacement
+  resampled_samples <- sample(samples, size = max_iterations, replace = TRUE, prob = weights)
+  
+  # Using the mode_history variable to store mode values to track stability
+  mode_history <- numeric(stable_checks)
+   
+  # Initializing a counter to track consecutive stable checks for the mode
+  stable_count <- 0
+#_______________________________________________________________________________
+  
+  # Using a for loop to perform convergence monitoring after every 1000 iterations (as specified by check_interval)
+  for (i in seq(check_interval, max_iterations, by = check_interval)) {
+    
+    # Calculating the mode of the fuel level distribution
+    current_mode <- compute_mode(resampled_samples[1:i])
+    
+    # Updating the mode history (this is tracking the stability over the last 1000 iterations)
+    mode_history <- c(mode_history[-1], current_mode)  
+    
+    # Using an if else statement to determine if the mode history indicates convergence
+    if (length(unique(mode_history)) == 1 || all(abs(diff(mode_history)) < tolerance)) {
+      # Increasing the stable count by 1 if the changes in the mode are below the tolerance threshold
+      stable_count <- stable_count + 1
+    } else {
+      # Resetting the stable counter to 0 if the changes in the mode are above the tolerance threshold
+      stable_count <- 0  
+    }
+    # If stability has been observed for 30 stable checks, stop the iterations early due to convergence
+    if (stable_count >= stable_checks) {
+      cat("Converged at iteration:", i, "with mode:", round(current_mode, 3), "\n")
+      return(list(samples = resampled_samples[1:i], convergence_iter = i))
+    }
+  }
+  # Note: If the for loop completes without detecting early convergence before the maximum number of iterations are reached, return all of the generated samples
+  return(list(samples = resampled_samples, convergence_iter = max_iterations))
+}
+#_______________________________________________________________________________
+#### RUNNING THE BAYES MONTE CARLO METHOD FOR EACH OF THE THREE SEEDS ####
+
+# Initializing a list to store the generated samples for each seed
+bmc_samples <- list()
+
+# Initializing a list to store the iteration at which the simulation converged for each seed
+bmc_convergence_info <- list()
+
+# Using a for loop to run the Bayes Monte Carlo simulation for each of the three seeds
+for (seed in seeds) {
+  
+  # Performing the Bayes Monte Carlo simulation for the given seed
+  result <- bayes_monte_carlo(max_iterations, seed)
+  
+  # Storing the generated sample values in a list indexed by seed
+  bmc_samples[[as.character(seed)]] <- result$samples
+  
+  # Storing the iteration at which convergence was reached
+  bmc_convergence_info[[as.character(seed)]] <- result$convergence_iter
+}
+#_______________________________________________________________________________
+# Calculating the Bayes Monte Carlo posterior densities for subsequent analysis
+bmc_posterior_densities <- lapply(bmc_samples, function(samples) {
+  
+  # Filtering out negative samples (as only positive values are valid)
+  filtered_samples <- samples[samples > 0]
+  
+  # Ensuring there are enough samples to calculate a density estimation
+  if (length(filtered_samples) > 1) {
+    
+    # Calculating the kernel density estimation for the samples (only positive samples)
+    # Note: adjust = 1.5 modifies the bandwidth to make the estimate more smooth
+    density(filtered_samples, from = min(filtered_samples), to = max(filtered_samples), adjust = 1.5)
+  } else {
+    # Returning NULL if there are not enough valid samples for density estimation
+    NULL
+  }
+})
+#_______________________________________________________________________________
+#### PLOTTING THE POSTERIORS FROM THE BAYES MONTE CARLO METHOD FOR EACH OF THE THREE SEEDS WITH THE LIKELIHOOD FUNCTION AND PRIOR ####
+
+# Plotting the posteriors from the Bayes Monte Carlo method with the likelihood function and prior for each of the three seeds
+plot(NULL, xlim = c(-60, 200), ylim = c(0, 0.025), type = "n",
+     
+     # Specifying the title/header for the plot
+     main = "Plot of Posteriors from Bayes Monte Carlo Method with Likelihood and Prior",
+     
+     # Specifying the x-axis label
+     xlab = "Fuel (Liters)",
+     
+     # Specifying the y-axis label
+     ylab = "Probability Density",
+     
+     # Removing the default x-axis label
+     xaxt = "n")
+
+# Adding custom x-axis labels and a custom increment to increase readability of the plot
+axis(1, at = seq(-60, 200, by = 20))
+
+# Using a for loop to plot the likelihood function for each of the three seeds
+for (i in seq_along(seeds)) {
+  lines(plot_data[[i]]$x, plot_data[[i]]$y, col = seed_colors[i], lwd = seed_line_widths[i])
+}
+
+# Plotting the posterior distributions for each of the three seeds from the Bayes Monte Carlo method
+bmc_posterior_colors <- c("purple", "violet", "magenta")
+for (i in seq_along(seeds)) {
+  lines(bmc_posterior_densities[[as.character(seeds[i])]]$x, 
+        bmc_posterior_densities[[as.character(seeds[i])]]$y, 
+        col = bmc_posterior_colors[i], lwd = 4)
+}
+
+# Adding a vertical dashed line to denote the expected value of available fuel
+abline(v = plot_data[[i]]$expected, col = "red", lwd = 3, lty = 2)
+
+# Adding a vertical dashed line to denote the most likely value of available fuel
+abline(v = plot_data[[i]]$most_likely, col = "darkorange", lwd = 3, lty = 3)
+
+# Adding a set of vertical dashed lines to denote the standard deviation of the digital fuel sensor
+abline(v = c(fuel_sensor_reading - 20, fuel_sensor_reading + 20), col = "darkgray", lwd = 3, lty = 3)
+
+# Adding text to label the +1 and -1 standard deviations of the digital fuel sensor
+text(fuel_sensor_reading - 20, max(plot_data[[i]]$y) * 0.7, "-1 SD", pos = 2, col = "darkgray")
+text(fuel_sensor_reading + 20, max(plot_data[[i]]$y) * 0.7, "+1 SD", pos = 4, col = "darkgray")
+
+# Adding vertical dashed lines to denote the bounds for the proper prior
+segments(x0 = minimum_fuel_tank_capacity, y0 = 0, x1 = minimum_fuel_tank_capacity, y1 = prior_height, col = "black", lwd = 3, lty = 2)
+segments(x0 = total_fuel_tank_capacity, y0 = 0, x1 = total_fuel_tank_capacity, y1 = prior_height, col = "black", lwd = 3, lty = 2)
+
+# Adding a horizontal dashed line for the proper prior between 0 liters and 182 liters to create a rectangle
+segments(x0 = minimum_fuel_tank_capacity, y0 = prior_height, x1 = total_fuel_tank_capacity, y1 = prior_height, col = "black", lwd = 3, lty = 2)
+
+# Adding a legend to label the key elements of the plot
+legend("topright", legend = c("Likelihood (Seed 3)", "Likelihood (Seed 5)", "Likelihood (Seed 9)", "Proper Prior", "BMC Posterior (Seed 3)", "BMC Posterior (Seed 5)", "BMC Posterior (Seed 9)"),
+       col = c("darkblue", "blue", "lightblue", "black", "purple", "violet", "magenta"), lwd = c(4, 4, 4, 3, 4, 4, 4), lty = c(1, 1, 1, 2, 1, 1, 1), inset = 0.02)
+#_______________________________________________________________________________
+#### PRINTING THE ESTIMATES FROM THE POSTERIORS FROM THE BAYES MONTE CARLO METHOD AND THE CONVERGENCE METRICS FOR EACH OF THE SEEDS ON A NEW PAGE IN THE PDF FILE ####
+
+# Opening a new plot in the PDF file to print the posterior estimates from the Bayes Monte Carlo method along with the convergence metrics for each of the three seeds
+plot.new()
+
+# Specifying a title for this new page in the PDF file
+title(main = "Posterior Estimates and Convergence Metrics from the Bayes Monte Carlo Method for All Seeds", 
+      font.main = 2, cex.main = 0.8)
+
+# Calculating the posterior estimates for each of the three seeds
+posterior_estimates <- lapply(bmc_samples, function(samples) {
+  
+  # Calculating the expected value of available fuel (the mean)
+  expected_value <- mean(samples)
+  
+  # Calculating the most likely value of available fuel (the mode)
+  most_likely_value <- compute_mode(samples)
+  
+  # Calculating the probability of negative fuel in the tank
+  prob_negative_fuel <- mean(samples < 0)  
+  
+  # Note: Storing the estimates for each seed as a dictionary inside the variable posterior_estimates
+  list(mean = expected_value, mode = most_likely_value, prob_negative_fuel = prob_negative_fuel)
+})
+
+# Making the headers for each seed in bold font and underlined
+bold_underline <- function(text) {
+  bquote(underline(bold(.(text))))
+}
+# Defining the Y-positioning variables for the printed text
+# Note: y_pos sets the starting position for the text at the top of the page
+y_pos <- 0.95
+# Note: y_step specifies the vertical spacing between the lines of text
+y_step <- 0.045  
+
+# Using a for loop to iterate through each of the three seeds and print the calculated estimates and convergence metrics
+for (i in seq_along(names(bmc_samples))) {
+  seed_name <- names(bmc_samples)[i]
+  convergence_iter <- bmc_convergence_info[[seed_name]]
+  
+  # Using an if else statement to determine the convergence status
+  if (convergence_iter < max_iterations) {
+    convergence_status <- "Converged Successfully"
+  } else {
+    convergence_status <- "Did Not Converge"
+  }
+  
+  # Printing the header for each seed
+  text(0.05, y_pos, bold_underline(paste("Seed", seed_name)), cex = 0.75, adj = 0)
+  y_pos <- y_pos - y_step
+  
+  # Printing the expected value of available fuel (the mean) for each seed
+  text(0.05, y_pos, paste("Expected Value of Available Fuel (Mean):", 
+                          round(posterior_estimates[[i]]$mean, 2), "liters"), cex = 0.65, adj = 0)
+  y_pos <- y_pos - y_step
+  
+  # Printing the most likely value of available fuel (the mode) for each seed
+  text(0.05, y_pos, paste("Most Likely Value of Available Fuel (Mode):", 
+                          round(posterior_estimates[[i]]$mode, 2), "liters"), cex = 0.65, adj = 0)
+  y_pos <- y_pos - y_step
+  
+  # Printing the probability of negative fuel in the tank for each seed
+  text(0.05, y_pos, paste("Probability of Negative Fuel in the Tank:", 
+                          round(posterior_estimates[[i]]$prob_negative_fuel * 100, 1), "%"), 
+       cex = 0.65, adj = 0)
+  y_pos <- y_pos - y_step
+  
+  # Printing the required number of iterations for convergence for each seed
+  text(0.05, y_pos, paste("Number of Iterations Required for Convergence:", convergence_iter), 
+       cex = 0.65, adj = 0)
+  y_pos <- y_pos - y_step
+  
+  # Printing the convergence status for each seed
+  text(0.05, y_pos, paste("Convergence Status:", convergence_status), 
+       cex = 0.65, adj = 0)
+  y_pos <- y_pos - y_step - 0.03
+}
+#_______________________________________________________________________________
+#### PLOTTING THE POSTERIORS FROM THE METROPOLIS-HASTING ALGORITHM AND THE BAYES MONTE CARLO METHOD WITH THE LIKELIHOOD FUNCTION AND PRIOR ####
+
+# Plotting the posterior distribution for each seed from the Metropolis-Hasting algorithm and the Bayes Monte Carlo method with the likelihood function and prior
+plot(NULL, xlim = c(-60, 200), ylim = c(0, 0.025), type = "n",
+     
+     # Specifying the title/header for the plot
+     main = "Posteriors from Metropolis Hasting Algorithm and Bayes Monte Carlo Method",
+     
+     # Specifying the x-axis label
+     xlab = "Fuel (Liters)",
+     
+     # Specifying the y-axis label
+     ylab = "Probability Density",
+     
+     # Removing the default x-axis labels
+     xaxt = "n")
+
+# Adding custom labels to the x-axis to enhance the readability of the plot
+# Note: Specifying the bounds and labeled increments (by 20) on the x-axis
+axis(1, at = seq(-60, 200, by = 20))
+
+# Using a for loop to plot the likelihood function for each of the three seeds
+for (i in seq_along(seeds)) {
+  lines(plot_data[[i]]$x, plot_data[[i]]$y, col = seed_colors[i], lwd = seed_line_widths[i])
+}
+
+# Using a for loop to plot the posterior for each of the three seeds from the Metropolis Hasting Algorithm
+posterior_colors <- c("darkgreen", "green", "lightgreen")
+for (i in seq_along(seeds)) {
+  lines(posterior_densities[[as.character(seeds[i])]]$x, posterior_densities[[as.character(seeds[i])]]$y, 
+        col = posterior_colors[i], lwd = 4)
+}
+
+# Plotting the Bayes Monte Carlo posterior distributions for each of the three seeds
+bmc_posterior_colors <- c("purple", "violet", "magenta")
+for (i in seq_along(seeds)) {
+  lines(bmc_posterior_densities[[as.character(seeds[i])]]$x, 
+        bmc_posterior_densities[[as.character(seeds[i])]]$y, 
+        col = bmc_posterior_colors[i], lwd = 4)
+}
+
+# Adding a vertical dashed line to denote the expected value of available fuel
+abline(v = plot_data[[i]]$expected, col = "red", lwd = 3, lty = 2)
+
+# Adding a vertical dashed line to denote the most likely value of available fuel
+abline(v = plot_data[[i]]$most_likely, col = "darkorange", lwd = 3, lty = 3)
+
+# Adding a set of vertical dashed lines to denote the standard deviation of the digital fuel sensor
+abline(v = c(fuel_sensor_reading - 20, fuel_sensor_reading + 20), col = "darkgray", lwd = 3, lty = 3)
+
+# Adding text to label the +1 and -1 standard deviations of the digital fuel sensor
+text(fuel_sensor_reading - 20, max(plot_data[[i]]$y) * 0.7, "-1 SD", pos = 2, col = "darkgray")
+text(fuel_sensor_reading + 20, max(plot_data[[i]]$y) * 0.7, "+1 SD", pos = 4, col = "darkgray")
+
+# Adding vertical dashed lines to denote the bounds for the proper prior
+segments(x0 = minimum_fuel_tank_capacity, y0 = 0, x1 = minimum_fuel_tank_capacity, y1 = prior_height, col = "black", lwd = 3, lty = 2)
+segments(x0 = total_fuel_tank_capacity, y0 = 0, x1 = total_fuel_tank_capacity, y1 = prior_height, col = "black", lwd = 3, lty = 2)
+
+# Adding a horizontal dashed line for the proper prior between 0 liters and 182 liters to create a rectangle
+segments(x0 = minimum_fuel_tank_capacity, y0 = prior_height, x1 = total_fuel_tank_capacity, y1 = prior_height, col = "black", lwd = 3, lty = 2)
+
+# Adding a legend to the plot to label the key elements including the likelihood function for each seed, the proper prior, the posterior for each seed, the expected value (mean), the most likely value (mode), and the fuel sensor standard deviation
+legend("topright", legend = c("Likelihood (Seed 3)", "Likelihood (Seed 5)", "Likelihood (Seed 9)", "Proper Prior", "M-H Posterior (Seed 3)", "M-H Posterior (Seed 5)", "M-H Posterior (Seed 9)", "BMC Posterior (Seed 3)", "BMC Posterior (Seed 5)", "BMC Posterior (Seed 9)", "Expected Value (Mean)", "Most Likely Value (Mode)", "Fuel Error SD"),
+       col = c("darkblue", "blue", "lightblue", "black", "darkgreen", "green", "lightgreen","purple", "violet", "magenta", "red", "orange", "darkgray"), lwd = c(4, 4, 4, 2, 4, 4, 4, 4, 4, 4, 3, 3, 3), lty = c(1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 3, 3, 3), cex = 0.75, inset = 0.02)
+#_______________________________________________________________________________
+#### PRINTING A TABLE DETAILING THE REQUIRED NUMBER OF RUNS NEEDED FOR CONVERGENCE FOR THE METROPOLIS-HASTING ALGORITHM WITH THE BAYES MONTE CARLO METHOD FOR EACH OF THE SEEDS ####
+
+# Loading the gridExtra and grid libraries to produce a well-formatted table of the convergence results
+library(gridExtra)
+library(grid)
+
+# Opening a new blank page in the PDF file to print the table
+plot.new()  
+
+# Stating the three fixed seeds for the table
+seeds <- c(3, 5, 9)
+
+# Specifying the iteration for convergence for each of the three seeds for the Metropolis-Hasting algorithm
+metropolis_hasting_convergence <- c(552000, 446000, 695000)
+
+# Specifying the iteration for convergence for each of the three seeds for the Bayes Monte Carlo method
+bayes_monte_carlo_convergence <- c(202000, 279000, 148000)
+
+# Creating a data frame with properly formatted column names
+convergence_df <- data.frame(
+  Seed = seeds,
+  "M-H Required Iterations for Convergence" = metropolis_hasting_convergence,
+  "BMC Required Iterations for Convergence" = bayes_monte_carlo_convergence,
+  # Ensuring that the column names do not have periods in place of spaces between the words
+  check.names = FALSE 
+)
+
+# Adding a title to the top of this last page in the PDF file
+grid.text("Table of Required Iterations for Convergence for Metropolis-Hastings and Bayes Monte Carlo", 
+          x = 0.5, y = 0.9, gp = gpar(fontsize = 11, fontface = "bold"))
+
+# Printing the table onto the PDF page
+grid.table(convergence_df)
+#_______________________________________________________________________________
+# Closing the PDF file
+dev.off()
+
