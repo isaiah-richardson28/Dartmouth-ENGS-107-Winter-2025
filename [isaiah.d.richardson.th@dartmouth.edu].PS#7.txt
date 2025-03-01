@@ -1,0 +1,364 @@
+#===============================================================================
+# Course: ENGS 107: Bayesian Statistical Modeling and Computation
+# Problem Set 7: Project Report
+# Professor: Dr. Klaus Keller PhD
+# Due Date: Sunday March 2, 2025 at 2:00 pm EST
+# File name: [isaiah.d.richardson.th@dartmouth.edu].PS#7.R
+# Software: R and RStudio
+#===============================================================================
+# Author: Isaiah D. Richardson, M.S.
+# Copyright: copyright by the author
+# License: this code is distributed under the GNU GENERAL PUBLIC LICENSE v3.0
+# License: for more information regarding GNU GENERAL PUBLIC LICENSE Version 3 visit: https://www.gnu.org/licenses/why-not-lgpl.html
+# There is no warranty on this R code script for ENGS 107 Question 4A
+#===============================================================================
+# Attached here is the link to access this code script on my ENGS 107 GitHub Repository: https://github.com/isaiah-richardson28/Dartmouth-ENGS-107-Winter-2025
+#===============================================================================
+# Version 1: last changes made on: February 28, 2025
+#===============================================================================
+# Sources used to help write this code script:
+# - Personal correspondence with Dr. Klaus Keller during in-person office hours to conceptually discuss the overarching method for my project, the data flow diagram, and the expected initial results from the code script
+# - Applegate, P.J., Keller, K. et al.(2016). Risk Analysis in the Earth Sciences: A Lab Manual with Exercises in R. For understanding the RStudio interface and basic functions in R
+# - The coin-example.R from Canvas for general formatting of the code script and layout of the header notes
+# - R help files accessed through R-studio for syntax
+# - Short, T. (2004). R Reference Card. For understanding how to use different functions and commands in R including data.frame, list, seq, par, paste, runif, min, max, mfrow, polygon, c, $, cex, cbind, sapply, ncol, and nrow (to name a few) 
+# - Grolemund, G. Hands-On Programming with R. For understanding the RStudio interface and basic functions in R
+# - Douglas, A., Roos, D., Mancini, F., Couto, A. & Lusseau, D. (2024). An Introduction to R. For understanding how to produce plots in R using the base R plot commands
+# - Murrell, P. (2005). R Graphics. Chapman & Hall/CRC. For understanding the basics of how to plot results visually and textually in R
+# - Chang, W. (2013). R Graphics Cookbook: Practical Recipes for Visualizing Data. O’Reilly Media. For understanding the syntax, functions, formatting, and basics of producing plots and visualizing data in R
+# - Verzani, J. (2002). simpleR - Using R for Introductory Statistics. Used for understanding notation, functions, and formatting of the code script
+# - Auguie, B. & Antonov, A. (2022). GridExtra: Miscellaneous Functions for "Grid" Graphics. For understanding the basics of using the gridExtra package in R
+# - Murrell, P. (2012). Integrating Grid Graphics Output with Base Graphics Output. For understanding the basics of using the grid package in R
+# - Taboga, M. (2021). "Beta distribution", Lectures on probability theory and mathematical statistics. Kindle Direct Publishing. For gaining a conceptual understanding of beta distribution for the design of my priors on the parameters
+# - All biological intuition integrated into the writing of this code script (in particular pertaining to the biological features and priors) was drawn from my own foundational understanding of molecular and cellular biology, biochemistry, genetics, microbiology, and transport proteins
+#===============================================================================
+# Collaborators:
+# - There are no collaborators to specify for the writing of this code script
+#===============================================================================
+# To run this code script:
+# 1. Open the ascii file in R
+# 2. Use the cursor to highlight the entire code script
+# 3. Press either 'Run', 'Ctrl + Enter', or 'Source' to run the entire code script
+# 4. Open the resulting PDF file to analyze the initial results
+#===============================================================================
+#### A COMPUTATIONAL MODEL USING BAYESIAN INFERENCE TO IDENTIFY A THERMOPHILIC PYRUVATE TRANSPORTER ####
+#===============================================================================
+#### PURPOSE ####
+# The purpose of this code script is to produce an initial set of results in support of my National Science Foundation (NSF) Graduate Research Fellowship Proposal (GRFP) that
+# outlines research aimed at using a model with Bayesian inference to computationally identify a thermophilic pyruvate transporter (TPT) that is functional in Clostridium thermocellum. The
+# initial results produced from this code script were achieved using a hypothetical set of 1000 candidate transport proteins from mesophilic microbes (microbes that grow optimally
+# at moderate temperatures). The purpose of this was to computationally simulate the workflow for Aim 1 of the proposal from steps 1-4 to demonstrate that the model is working properly.
+# Aim 1 of the proposal was to: generate an initial ranked list of candidate proteins and experimentally test the top candidates for activity in C. thermocellum.
+#===============================================================================
+#### DEFINING THE MODEL ####
+# y = f(X, θ) + ε
+# Where:
+# y = yield (prediction)
+# X = vector of five different biological features [1) sequence homology, 2) number of transmembrane domains, 3) genomic context, 4) thermostability, 5) GC content]
+# θ = parameters
+# ε = model-observation mismatch (residual)
+#===============================================================================
+
+# Opening and naming a PDF file oriented in landscape format to print the initial results
+pdf("Isaiah Richardson NSF GRFP Initial Results.pdf", width = 11, height = 8.5, paper = "special")
+
+# Importing the gridExtra library to produced formatted tables in the PDF file 
+library(gridExtra)
+
+# Importing the grid library to assist with the textual layout in the PDF file
+library(grid) 
+#===============================================================================
+
+# Setting a single seed to ensure reproducibility of the results
+set.seed(42)
+
+# Setting the number of hypothetical candidate transport proteins from mesophilic microbes to 1000
+num_proteins <- 1000  
+#===============================================================================
+#### DEFINING THE FIVE DIFFERENT BIOLOGICAL FEATURES ####
+#===============================================================================
+
+# Initializing a data frame to store and simulate five different biological feature values for the 1000 simulated candidate proteins
+# The biological feature values are randomly assigned but are constrained within reasonable biological ranges determined using my biological intuition
+# Although this is a simulation, the resulting protein data is designed to mimic real-world data to demonstrate that the model is working properly and can be used with real candidate proteins
+protein_data <- data.frame(
+  
+  # Assigning a unique protein ID number (ranging from 1-1000) to each candidate
+  Protein_ID = 1:num_proteins,
+  
+  # Biological feature 1: Protein sequence homology
+  # Using runif to generate random values from a uniform distribution between 0 and 1. This represents how similar a protein is to known transporters, with 1 being the highest similarity
+  Homology = runif(num_proteins, 0, 1),
+  
+  # Biological feature 2: Number of transmembrane domains (TMDs)
+  # Randomly picks an integer between 0 and 14 to represent the number of transmembrane domains present in the hypothetical candidate protein
+  # A higher value (i.e., 12 or 14) suggests a protein that spans the cell membrane, which would be indicative of a transport protein.
+  TMDs = sample(0:14, num_proteins, replace = TRUE) / 14,  
+  
+  # Biological feature 3: Genomic context (position in the genome relative to other relevant genes)
+  # Uses runif to generate random values between 0 and 1 to represent how well the gene encoding the hypothetical candidate protein is positioned in the genome relative to other related genes
+  # A value close to 1 indicates an candidate that has strong genomic evidence for being a transport protein
+  Genomic_Context = runif(num_proteins, 0, 1),  
+  
+  # Biological feature 4: Thermostability (stability at high temperatures)
+  # Uses runif to randomly generate values between 50 and 100 to represent protein stability at high temperatures
+  # This value is later normalized between 0 and 1 (see below)
+  Thermostability = runif(num_proteins, 50, 100),   
+  
+  # Biological feature 5: GC Content (Number of guanine [G] and cytosine [C] nucleotides present in the gene of the candidate protein. A high GC content is indicative of a thermostable protein)
+  # Using runif to generate random values between 40% and 70% (these are common GC content ranges for thermophiles)
+  # Dividing these values by 100 scales the values between 0.40 and 0.70
+  GC_Content = runif(num_proteins, 40, 70) / 100  
+)
+
+# Normalizing the thermostability biological feature values between 0 and 1
+protein_data$Thermostability <- (protein_data$Thermostability - min(protein_data$Thermostability)) / 
+  (max(protein_data$Thermostability) - min(protein_data$Thermostability))
+#===============================================================================
+# DEFINING THE PRIORS ON THE PARAMETERS (θ VALUES)
+# ==============================================================================
+# The model parameters (θ values) are assigned prior distributions
+# These priors reflect my initial belief based on biological intuition about the relative importance (weight) of each biological feature on predicting thermophilic pyruvate transport activity
+
+# Using a list to define the priors (with a beta distribution) on the parameters (θ values)
+# A beta distribution is a continuous probability distribution defined on the interval [0,1] parameterized by alpha (number of prior successes - higher values shift probability mass towards 1) and beta (number of prior failures - higher values shift probability mass towards 0)
+# These priors were set using my own biological intuition. My prior belief indicates that sequence homology and thermostability are the most important for identifying a functional thermophilic pyruvate transporter
+priors <- list(
+  # Setting the prior (beta distribution) for Sequence Homology
+  theta1 = list(alpha = 16.4, beta = 2.2, label = "Sequence Homology"),
+  # Setting the prior (beta distribution) for number of transmembrane domains (TMDs)
+  theta2 = list(alpha = 12.6, beta = 8.4, label = "TMDs"),
+  # Setting the prior (beta distribution) for genomic context
+  theta3 = list(alpha = 10.2, beta = 8.8, label = "Genomic Context"),
+  # Setting the prior (beta distribution) for thermostability
+  theta4 = list(alpha = 16.8, beta = 4.8, label = "Thermostability"),
+  # Setting the prior (beta distribution) for GC content
+  theta5 = list(alpha = 14.0, beta = 6.2, label = "GC Content")
+)
+#===============================================================================
+# PLOTTING THE PRIORS ON THE PARAMETERS 
+# ==============================================================================
+
+# Generating a sequence of theta values from 0 to 1 using the seq function
+theta_vals <- seq(0, 1, length.out = 100)
+# Arranging the five plots of the priors in a 3 x 2 grid format
+par(mfrow = c(3, 2))
+
+# Using a for loop to loop through each parameter in the list of priors
+for (theta in names(priors)) {
+  # Extracting the specific prior information
+  prior <- priors[[theta]]
+  # Calculating the beta PDF (probability density function)
+  pdf_vals <- dbeta(theta_vals, prior$alpha, prior$beta)
+  
+  # Plotting the beta distribution for each of the priors
+  plot(theta_vals, pdf_vals, type = "l", lwd = 2, col = "blue",
+       # Specifying the title/header for each plot
+       main = paste("Prior Distribution for", prior$label),
+       # Specifying the x-axis label
+       xlab = "Theta",
+       # Specifying the y-axis label
+       ylab = "PDF")
+  # Filling the area under the curve for each plot with a semi-transparent blue color
+  polygon(theta_vals, pdf_vals, col = rgb(0, 0, 1, alpha = 0.3), border = NA)
+}
+# Resetting the plotting layout
+par(mfrow = c(1, 1))  
+#===============================================================================
+
+# Using the sapply function to sample one θ value from each beta prior distribution to simulate initial model weights
+# These values will be used to compute the predicted yield for each protein
+theta_samples <- sapply(priors, function(prior) {
+  # Drawing one random sample per parameter from its Beta distribution
+  rbeta(1, prior$alpha, prior$beta) 
+})
+# Assigning parameter names to the sampled values
+# THe sampled values represent the initial model parameter values before performing Bayesian updating and are used to calculate the yield for each candidate
+names(theta_samples) <- names(priors)
+
+# ==============================================================================
+# CALCULATING THE YIELD (PREDICTION) FOR EACH OF THE 1000 HYPOTHETICAL CANDIDATE PROTEINS
+# ==============================================================================
+
+# Calculating the yield (prediction) for each candidate protein using the sampled θ values and feature data
+protein_data$Predicted_Yield <- with(protein_data,
+                                     Homology * theta_samples["theta1"] + TMDs * theta_samples["theta2"] + Genomic_Context * theta_samples["theta3"] + Thermostability * theta_samples["theta4"] + GC_Content * theta_samples["theta5"]
+)
+
+# Normalizing the calculated yield (prediction) values between 0 and 1
+protein_data$Predicted_Yield <- (protein_data$Predicted_Yield - min(protein_data$Predicted_Yield)) /
+  (max(protein_data$Predicted_Yield) - min(protein_data$Predicted_Yield))
+
+# Ranking the proteins in descending order (highest to lowest) based on the calculated yields (predictions)
+protein_data <- protein_data[order(-protein_data$Predicted_Yield), ]
+# ==============================================================================
+# SELECTING AND PRINTING THE TOP 30 CANDIDATE PROTEINS IN A TABLE IN THE PDF FILE
+# ==============================================================================
+
+# Selecting the top 30 candidate proteins based on calculated yield
+top_candidates <- protein_data[1:30, ]
+
+# Rounding the numerical values to 2 decimal places to improve readability
+top_candidates[, 2:ncol(top_candidates)] <- round(top_candidates[, 2:ncol(top_candidates)], 2)
+
+# Adding a protein column number to the table
+top_candidates <- cbind(Protein_Number = 1:nrow(top_candidates), top_candidates)
+
+# Adding a rank column to the table
+top_candidates$Rank <- 1:nrow(top_candidates)
+
+# Creating a title for the table
+title_text <- "Ranking of the Top 30 Candidate Proteins Based on Calculated Yield"
+title_grob <- textGrob(title_text, gp = gpar(fontsize = 14, fontface = "bold"))
+
+# Creating a graphical table; rows = NULL removes the default row names
+table_grob <- tableGrob(top_candidates, rows = NULL, theme = ttheme_default(base_size = 7))
+
+# Arranging and displaying the graphical table and title on the PDF page
+grid.arrange(title_grob, table_grob, ncol = 1, heights = unit(c(0.07, 0.93), "npc"))
+
+# ============================
+# PRODUCING A TABLE OF THE CANDIDATE PROTEINS WITH YIELD = 1.0, 0.5, 0.0
+# ============================
+
+# Defining a title for the table to put in the PDF file
+title_selected <- textGrob("Summary of Candidate Proteins with Yield = 1.0, 0.5, and 0.0", gp = gpar(fontsize = 16, fontface = "bold"))
+
+# Identifying the specific candidate proteins
+# Candidate with highest yield
+highest <- protein_data[1, ]
+# Candidate with lowest yield
+lowest <- protein_data[nrow(protein_data), ]
+# Candidate with yield closest to 0.5
+medium <- protein_data[which.min(abs(protein_data$Predicted_Yield - 0.5)), ]
+
+# Combine the selected candidate proteins into a single data frame
+selected_candidates <- rbind(highest, medium, lowest)
+
+# Rounding the numeric values to 2 decimal places for enhanced readability
+selected_candidates[, 2:ncol(selected_candidates)] <- round(selected_candidates[, 2:ncol(selected_candidates)], 2)
+
+# Creating a new column in the table called "Category" to label each of the candidate proteins as "Highest, Middle, or Lowest Yield"
+selected_candidates$Category <- c("Highest Yield", "Middle Yield", "Lowest Yield")
+
+# Adding a rank column to the table (out of total set of 1000 hypothetical candidate proteins)
+selected_candidates$Rank <- c(1, which.min(abs(protein_data$Predicted_Yield - 0.5)), nrow(protein_data))
+
+# Reordering the columns in the table to ensure that the rank (score) column is located at the far right of the table
+selected_candidates <- selected_candidates[, c("Category", colnames(protein_data), "Rank")]
+
+# Formatting the table to center-align all values and improve readability
+table_theme <- ttheme_default(
+  # Center-aligning all of the values in the table
+  core = list(fg_params = list(cex = 0.9), just = "center"),
+  # Bolding and center-aligning the headers in each column of the table
+  colhead = list(fg_params = list(cex = 1.1, fontface = "bold"), just = "center")
+)
+
+# Generating the formatted table
+table_selected_grob <- tableGrob(selected_candidates, rows = NULL, theme = table_theme)
+
+# Arranging the table with the title to ensure that it fits properly on the PDF page
+grid.arrange(title_selected, table_selected_grob, ncol = 1, heights = unit(c(0.1, 0.9), "npc"))
+
+# ==============================================================================
+# PLOTTING A SINGLE PDF OF THREE YIELD VALUES: 1.0, 0.5, AND 0.0
+# ==============================================================================
+
+# Defining the tolerance range for the specified  yield values (1.0, 0.5, 0.0)
+tolerance <- 0.20
+
+# Counting the number of candidate proteins with calculated yield values within the specified tolerance range near 1.0, 0.5, and 0.0
+count_high <- sum(abs(protein_data$Predicted_Yield - 1) < tolerance)
+count_medium <- sum(abs(protein_data$Predicted_Yield - 0.5) < tolerance)
+count_low <- sum(abs(protein_data$Predicted_Yield - 0) < tolerance)
+
+# Using the seq function to define the x-axis range for the plot
+x_vals <- seq(0, 1, length.out = 500)
+
+# Defining a small standard deviation range for the Gaussian peaks
+sigma <- 0.02
+
+# Calculating the mixture of the three Gaussian distributions weighted by the number of candidate proteins at each yield value (1, 0.5, 0) within the 0.20 tolerance range
+pdf_values <- count_high * dnorm(x_vals, mean = 1, sd = sigma) +
+  count_medium * dnorm(x_vals, mean = 0.5, sd = sigma) +
+  count_low * dnorm(x_vals, mean = 0, sd = sigma)
+
+# Normalizing the density values for better visualization (Note: scaling the PDF so the highest peak is at a value of 1)
+pdf_values <- pdf_values / max(pdf_values)
+
+# Adjusting the margins of the plot to improve visibility on the PDF page
+par(mar = c(4, 4, 3, 2))
+
+# Plotting the probability density function with adjusted y-axis limits
+plot(x_vals, pdf_values, type = "l", col = "black", lwd = 2,
+     # Specifying the header/title for the plot
+     main = "Probability Density Function of Yield = 1.0, 0.5 and 0.0",
+     # Specifying the x-axis label
+     xlab = "Normalized Yield",
+     # Specifying the y-axis label
+     ylab = "Probability Density", ylim = c(0, max(pdf_values) * 1.2))
+
+# Adding vertical references lines to denote each of the target yield values (1, 0.5, and 0)
+abline(v = 1, col = "red", lwd = 2, lty = 2)    
+abline(v = 0.5, col = "darkorange", lwd = 2, lty = 2) 
+abline(v = 0, col = "brown", lwd = 2, lty = 2)
+
+# Adding text annotations to the plot to specifying the number of candidate proteins within the tolerance range of each of the three yields (1, 0.5, and 0)
+text(1, max(pdf_values) * 1, labels = paste0("Near 1 (n = ", count_high, ")"), col = "red", pos = 2, cex = 0.9)
+text(0.60, max(pdf_values) * 1, labels = paste0("Near 0.5 (n=", count_medium, ")"), col = "darkorange", pos = 3, cex = 0.9)
+text(0, max(pdf_values) * 1, labels = paste0("Near 0 (n = ", count_low, ")"), col = "brown", pos = 4, cex = 0.9)
+
+# ==============================================================================
+# PRODUCING A TABLE OF THE TOP, MIDDLE, AND LOWEST 2 CANDIDATE PROTEINS BASED ON CALCULATED YIELDS TO INCLUDE AS INITIAL RESULTS IN THE NSF GRFP PROPOSAL AS FIGURE 2
+# ==============================================================================
+
+# Selecting the top 2, middle 2, and lowest 2 candidate proteins from the 1000 hypothetical candidate proteins
+top_2 <- protein_data[1:2, ]
+middle_indices <- c(floor(num_proteins / 2), ceiling(num_proteins / 2) + 1)
+middle_2 <- protein_data[middle_indices, ]
+bottom_2 <- protein_data[(num_proteins - 1):num_proteins, ]
+
+# Combining the selected candidate proteins into a single data frame
+selected_candidates_2 <- rbind(top_2, middle_2, bottom_2)
+
+# Adding a new column to the table called "Category" to assign labels to each of the candidate proteins
+selected_candidates_2$Category <- c("Top 1", "Top 2", "Middle 1", "Middle 2", "Lowest 1", "Lowest 2")
+
+# Adding rank (score) column to show the ranking of each of the candidates in relation to the full data set
+selected_candidates_2$Rank <- c(1, 2, middle_indices[1], middle_indices[2], num_proteins - 1, num_proteins)
+
+# Reorder the columns to place the rank column at the far right of the table
+selected_candidates_2 <- selected_candidates_2[, c("Category", colnames(protein_data), "Rank")]
+
+# Round numeric values to 2 decimal places for improved readability of the table
+selected_candidates_2[, 3:(ncol(selected_candidates_2) - 1)] <- round(selected_candidates_2[, 3:(ncol(selected_candidates_2) - 1)], 2)
+
+# Defining the title for the table
+title_candidates_2 <- textGrob("Summary of the Top, Middle, and Lowest Two Protein Candidates from the Ranked List", gp = gpar(fontsize = 16, fontface = "bold"))
+
+# Formatting the table
+table_theme <- ttheme_default(
+  # Center-aligning all of the values in the table
+  core = list(fg_params = list(cex = 0.9), just = "center"),
+  # Bolding and center-aligning all of the column headers in the table
+  colhead = list(fg_params = list(cex = 1.1, fontface = "bold"), just = "center") 
+)
+
+# Generating the formatted table
+table_candidates_2_grob <- tableGrob(selected_candidates_2, rows = NULL, theme = table_theme)
+
+# Arranging the page title and table on the PDF page to ensure that they fit properly
+grid.arrange(title_candidates_2, table_candidates_2_grob, ncol = 1, heights = unit(c(0.15, 0.85), "npc"))
+#===============================================================================
+# Closing the PDF file
+dev.off()
+#===============================================================================
+#### NEXT STEPS ####
+# After obtaining the experimental results in the lab from the top 30 protein candidates from the initial ranked list,
+# the next steps would be to define and calculate the likelihood function, calibrate the model and the model structure and choices
+# (which includes updating the priors on the parameters and running MCMC to generate a posterior distribution of parameter values). 
+# This would be followed by calculating the posterior predictions for each candidate protein and re-ranking the list of candidates.
+# The final step would be to select a new set of top candidates to experimentally test in the lab. This method can iterate to further
+# refine the model based on the experimental results.
+#===============================================================================
